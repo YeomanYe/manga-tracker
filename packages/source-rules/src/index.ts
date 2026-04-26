@@ -5,7 +5,6 @@ export {
   regexTest,
   type SelectorContext,
 } from './runtime';
-export { parseMangaFromHtml } from './parse-html';
 export { fromMangaTrackerV1 } from './adapters/manga-tracker-v1';
 export { fromLegadoV3 } from './adapters/legado-v3';
 export { fromMihonPort } from './adapters/mihon-port';
