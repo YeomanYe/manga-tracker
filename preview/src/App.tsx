@@ -1,5 +1,7 @@
 import type { Theme, ThemeTokens } from '@manga/types';
 import {
+  AddMangaPage,
+  type AddMangaResolver,
   type AsyncState,
   BUILTIN_THEMES,
   BookshelfPage,
@@ -244,6 +246,7 @@ export function App() {
 
           <div className="app-row">
             <BookshelfPage shelf={filteredShelf} state={state} />
+            <AddMangaPage resolve={mockResolve} onAdd={async () => undefined} />
             <DetailPage manga={currentManga} />
             <ReaderShellPage manga={currentManga} />
             <SettingsPage />
@@ -319,6 +322,48 @@ function getInitialQuery<T extends string>(key: string, allow: readonly T[]): T 
   const raw = new URL(window.location.href).searchParams.get(key);
   return allow.includes(raw as T) ? (raw as T) : null;
 }
+
+/**
+ * Preview mock — returns a fake parse result so designers can walk through
+ * the AddMangaPage states without wiring real fetch + rule.
+ */
+const mockResolve: AddMangaResolver = async (url) => {
+  await new Promise((r) => setTimeout(r, 600));
+  if (!/^https?:\/\//.test(url)) {
+    return { kind: 'fetch-failed', error: new Error('URL 必须是 http/https') };
+  }
+  if (url.includes('unknown')) {
+    let host: string;
+    try {
+      host = new URL(url).host;
+    } catch {
+      host = url;
+    }
+    return { kind: 'no-rule', host };
+  }
+  return {
+    kind: 'ok',
+    manga: {
+      id: `demo:${Date.now().toString(36)}`,
+      title: '一拳超人',
+      author: 'ONE / 村田雄介',
+      sourceUrl: url,
+      sourceId: 'example-1',
+    },
+    rule: {
+      format: 'manga-tracker-v1',
+      id: 'example-1',
+      name: 'example-1（虚构源）',
+      version: '1.0.0',
+      matcher: { domains: ['example.com'] },
+      selectors: {
+        manga: { title: 'h1' },
+        chapter: { number: 'regex:第(\\d+)话' },
+        currentUrl: { isMangaPage: 'regex:.*', isChapterPage: 'regex:.*' },
+      },
+    },
+  };
+};
 
 function loadCustoms(): Theme[] {
   if (typeof window === 'undefined') return [];

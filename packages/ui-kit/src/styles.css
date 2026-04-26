@@ -911,3 +911,112 @@
   justify-content: flex-end;
   margin-top: 6px;
 }
+
+/* === AddMangaPage === */
+.uk-add {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.uk-add__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.uk-add__row > span {
+  font-size: 11px;
+  color: var(--ink-text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--ink-font-mono);
+}
+.uk-add__row input {
+  background: var(--ink-bg-elev);
+  border: 1px solid var(--ink-border);
+  color: var(--ink-text);
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: var(--ink-font-mono);
+}
+.uk-add__hint {
+  font-size: 11.5px;
+  color: var(--ink-text-mute);
+  margin: 0;
+  line-height: 1.55;
+}
+.uk-add__result {
+  margin-top: 8px;
+}
+.uk-add__msg {
+  border: 1px solid var(--ink-border);
+  border-left-width: 3px;
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+}
+.uk-add__msg strong {
+  display: block;
+  font-family: var(--ink-font-serif);
+  font-size: 13.5px;
+  margin-bottom: 4px;
+}
+.uk-add__msg p {
+  margin: 0;
+  color: var(--ink-text-soft);
+  line-height: 1.55;
+}
+.uk-add__msg code {
+  font-family: var(--ink-font-mono);
+  font-size: 11px;
+  background: var(--ink-bg-soft);
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid var(--ink-border);
+}
+.uk-add__msg--warn {
+  border-left-color: var(--ink-warn);
+  background: rgba(217, 119, 6, 0.08);
+}
+.uk-add__msg--warn strong {
+  color: var(--ink-warn);
+}
+.uk-add__msg--bad {
+  border-left-color: var(--ink-bad);
+  background: var(--ink-bad-soft);
+}
+.uk-add__msg--bad strong {
+  color: var(--ink-bad);
+}
+.uk-add__msg--good {
+  border-left-color: var(--ink-good);
+  background: var(--ink-good-soft);
+}
+.uk-add__msg--good strong {
+  color: var(--ink-good);
+}
+.uk-add__preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--ink-border);
+  border-radius: 6px;
+  background: var(--ink-bg-elev);
+}
+.uk-add__preview__info {
+  flex: 1;
+  min-width: 0;
+}
+.uk-add__preview__title {
+  font-family: var(--ink-font-serif);
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.uk-add__preview__author {
+  font-size: 11px;
+  color: var(--ink-text-mute);
+  font-family: var(--ink-font-mono);
+  margin-bottom: 4px;
+}
