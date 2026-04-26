@@ -875,10 +875,10 @@ git push -u origin main</code></pre>
   </li>
   <li>登录 <a href="https://dash.cloudflare.com/?to=/:account/pages">Cloudflare Pages 控制台</a></li>
   <li>点 <strong>Create a project → Connect to Git</strong>，选 <code>YeomanYe/manga-tracker</code></li>
-  <li>构建配置：
+  <li>构建配置（全部在 CF Pages Dashboard 设置，**不要在仓库放 <code>wrangler.toml</code>**——wrangler v4 在 pnpm workspace 根部署会报错"<em>Wrangler application detection logic has been run in the root of a workspace</em>"，删掉就好）：
     <ul>
       <li>Framework preset: <code>None</code></li>
-      <li>Build command: <code>pnpm install --frozen-lockfile=false && pnpm build:site</code></li>
+      <li>Build command: <code>pnpm install --frozen-lockfile=false &amp;&amp; pnpm build:site</code></li>
       <li>Build output directory: <code>dist</code></li>
       <li>Root directory: <code>/</code></li>
       <li>Environment variables: <code>NODE_VERSION=20</code></li>
