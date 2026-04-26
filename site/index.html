@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="description" content="manga-tracker 设计文档：中文漫画追踪 + 换源工具的完整工程设计、模块架构、UI 候选与部署指南" />
+<title>manga-tracker · Design Document</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --bg-elev: #16161a;
+    --bg-soft: #1c1c20;
+    --border: #2a2a30;
+    --text: #e8e8ea;
+    --text-soft: #a8a8b0;
+    --text-mute: #6e6e78;
+    --accent: #f5a524;
+    --accent-soft: rgba(245, 165, 36, 0.12);
+    --link: #6ec1ff;
+    --code-bg: #18181c;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --maxw: 980px;
+  }
+  [data-theme="light"] {
+    --bg: #fafaf7;
+    --bg-elev: #ffffff;
+    --bg-soft: #f3f3ee;
+    --border: #e2e2dc;
+    --text: #1a1a1a;
+    --text-soft: #4a4a4a;
+    --text-mute: #8a8a82;
+    --accent: #b45309;
+    --accent-soft: rgba(180, 83, 9, 0.08);
+    --link: #2563eb;
+    --code-bg: #f3f3ee;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC",
+      "Source Han Sans CN", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  /* Sidebar */
+  aside {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 18px 28px 24px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .brand {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .brand .dot { color: var(--accent); }
+  .tagline {
+    font-size: 12px;
+    color: var(--text-mute);
+    margin-bottom: 24px;
+  }
+  nav ol { list-style: none; padding: 0; margin: 0; }
+  nav ol > li { margin-bottom: 4px; }
+  nav .grp {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-mute);
+    margin: 18px 0 8px;
+  }
+  nav a {
+    color: var(--text-soft);
+    text-decoration: none;
+    font-size: 13.5px;
+    display: block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+  }
+  nav a:hover { color: var(--text); background: var(--bg-soft); }
+  nav a.cur { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+
+  .toolbar {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .toolbar button {
+    background: var(--bg-soft);
+    color: var(--text-soft);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .toolbar button:hover { color: var(--text); }
+  .toolbar a {
+    color: var(--text-soft);
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .toolbar a:hover { color: var(--accent); }
+
+  /* Main */
+  main {
+    padding: 48px 56px 120px;
+    max-width: var(--maxw);
+    width: 100%;
+  }
+  h1 {
+    font-size: 30px;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  h2 {
+    font-size: 22px;
+    margin: 56px 0 14px;
+    padding-top: 24px;
+    border-top: 1px dashed var(--border);
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: 17px;
+    margin: 28px 0 10px;
+    letter-spacing: -0.005em;
+  }
+  h4 { font-size: 14.5px; margin: 18px 0 6px; color: var(--text-soft); }
+  p { margin: 0 0 14px; }
+  a { color: var(--link); }
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  code {
+    font-family: "JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, monospace;
+    font-size: 13px;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    margin: 0 0 16px;
+  }
+  pre code { background: transparent; border: none; padding: 0; font-size: inherit; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 18px;
+    font-size: 13.5px;
+  }
+  th, td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--bg-soft); font-weight: 600; color: var(--text-soft); font-size: 12.5px; }
+  td code { font-size: 12px; }
+
+  .meta {
+    color: var(--text-mute);
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-right: 6px;
+  }
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 0 0 18px;
+    font-size: 13.5px;
+  }
+  .callout.warn { border-left-color: var(--warn); background: rgba(245, 158, 11, 0.08); }
+  .callout strong { color: var(--accent); }
+  .callout.warn strong { color: var(--warn); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+  }
+  .card h4 { margin-top: 0; color: var(--accent); }
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: var(--bg-soft);
+    color: var(--text-soft);
+    border: 1px solid var(--border);
+    margin-right: 4px;
+  }
+  .pill.good { color: var(--good); border-color: rgba(34,197,94,0.3); }
+  .pill.warn { color: var(--warn); border-color: rgba(245,158,11,0.3); }
+  .pill.bad { color: var(--bad); border-color: rgba(239,68,68,0.3); }
+
+  hr { border: none; border-top: 1px dashed var(--border); margin: 32px 0; }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 24px 18px 80px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside>
+  <div class="brand">manga<span class="dot">·</span>tracker</div>
+  <div class="tagline">Design Document · v0.1 (Phase 1 kickoff)</div>
+  <nav>
+    <ol>
+      <li><div class="grp">Product</div></li>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#users">用户与场景</a></li>
+      <li><a href="#flows">主要流程</a></li>
+
+      <li><div class="grp">Engineering</div></li>
+      <li><a href="#architecture">架构设计</a></li>
+      <li><a href="#modules">模块设计</a></li>
+      <li><a href="#data-flow">数据流</a></li>
+      <li><a href="#source-rules">源规则 Schema</a></li>
+
+      <li><div class="grp">UX</div></li>
+      <li><a href="#ui">UI 设计候选</a></li>
+
+      <li><div class="grp">Process</div></li>
+      <li><a href="#stack">技术栈</a></li>
+      <li><a href="#standards">工程规范</a></li>
+      <li><a href="#roadmap">路线图</a></li>
+
+      <li><div class="grp">Ops</div></li>
+      <li><a href="#deploy">Cloudflare 部署</a></li>
+      <li><a href="#decisions">开放决策</a></li>
+    </ol>
+  </nav>
+  <div class="toolbar">
+    <button id="theme-btn" title="切换主题">主题</button>
+    <a href="https://github.com/YeomanYe/manga-tracker" target="_blank" rel="noopener">GitHub →</a>
+  </div>
+</aside>
+
+<main>
+
+<h1 id="overview">manga-tracker · 设计文档</h1>
+<div class="meta">
+  <span class="badge">v0.1</span>
+  Phase 1 Kickoff · 中文漫画追踪 + 换源工具 ·
+  Repo: <a href="https://github.com/YeomanYe/manga-tracker">YeomanYe/manga-tracker</a>
+</div>
+
+<p>
+  manga-tracker 是一套<strong>中文漫画追踪 + 换源工具</strong>，由两端组成：
+</p>
+<ul>
+  <li><strong>浏览器扩展（PC，Chrome/Firefox MV3）</strong>：用户在已适配的中文漫画站浏览时，自动识别作品和章节，写入本地书架；通过注入到页面的 <em>Sync Bar</em> 提供主操作入口</li>
+  <li><strong>移动端 Android app（Capacitor + WebView 套壳）</strong>：本地书架 + 跳转源站继续读 + 跨源切换</li>
+</ul>
+<p>两端共享一份<strong>源站适配规则（JSON schema）</strong>，整个工程在同一个 monorepo 内。</p>
+
+<div class="callout">
+  <strong>第一阶段（6-8 周）目标</strong>：扩展 + Android app 跑通端到端 — 识别 → 追踪 → 书架 → 跳读 → 换源；数据全部本地，不接云端；适配 3-5 个中文漫画站；不预置任何盗版源 URL，规则全靠用户运行时导入。
+</div>
+
+<h2 id="users">用户与场景</h2>
+
+<h3>目标用户</h3>
+<ul>
+  <li><strong>主要</strong>：18-35 岁中文漫画 / 动漫爱好者，长期在多个第三方漫画站之间跳转，需要统一书架与进度，不愿手动打卡</li>
+  <li><strong>次要</strong>：bgm.tv / AniList 用户中追漫画为主、嫌手动打卡太烦的子群</li>
+</ul>
+
+<h3>现状替代方案</h3>
+<table>
+  <thead><tr><th>方案</th><th>覆盖</th><th>痛点</th></tr></thead>
+  <tbody>
+    <tr><td>Mihon（Tachiyomi 分叉）</td><td>Android 原生阅读器，源生态成熟</td><td>PC 浏览器无追踪</td></tr>
+    <tr><td>MAL-Sync</td><td>浏览器扩展，自动写回 AniList/MAL</td><td>中文站点几乎没覆盖</td></tr>
+    <tr><td>bgm.tv</td><td>追番记录平台</td><td>纯手动打卡，UI 老旧</td></tr>
+  </tbody>
+</table>
+
+<h3>核心使用场景</h3>
+<ol>
+  <li><strong>PC 上</strong>：用户在已适配漫画站打开作品页 → 扩展识别 → Sync Bar 显示「+ 加入书架」→ 用户读章节 → 自动追踪进度</li>
+  <li><strong>手机上</strong>：打开 app → 看到本地书架 → 点作品 → WebView 跳到源站章节继续读</li>
+  <li><strong>跨源切换</strong>：当前源打不开（被封 / 维护）→ 用户手动切到另一个源继续读</li>
+</ol>
+
+<h2 id="flows">主要流程</h2>
+
+<h3>扩展端 happy path（PC）</h3>
+<pre><code>┌──────────────┐    URL 变化    ┌──────────────┐    匹配规则    ┌──────────────┐
+│ 用户打开漫画站 │──────────────▶│ Content Script │──────────────▶│ 识别作品/章节  │
+└──────────────┘                └──────────────┘                └──────┬───────┘
+                                                                       │
+                                                                       ▼
+                                                                ┌──────────────┐
+                                                                │ 注入 Sync Bar │
+                                                                │  (Shadow DOM) │
+                                                                └──────┬───────┘
+                                                                       │
+                            ┌────────── 用户点 [+ 加入书架] ─────────┤
+                            │                                          │
+                            ▼                                          ▼
+                    ┌──────────────┐                           ┌──────────────┐
+                    │  Background   │◀── chrome.runtime.msg ──│ 用户翻页      │
+                    │ Service Worker│                           └──────────────┘
+                    └──────┬───────┘
+                           │ 写入
+                           ▼
+                    ┌──────────────┐
+                    │  IndexedDB    │
+                    │ (via Dexie)   │
+                    └──────────────┘</code></pre>
+
+<h3>移动端 happy path（Android）</h3>
+<pre><code>┌────────────┐  ┌────────────┐  ┌─────────────┐  ┌──────────────────┐
+│ 打开 App   │─▶│ 显示书架    │─▶│ 点作品卡片  │─▶│ 详情页 + 章节列表 │
+└────────────┘  └────────────┘  └─────────────┘  └────────┬─────────┘
+                       ▲                                   │
+                       │ 进度 hydrate                       │ 点「继续阅读」
+                       │                                   │
+                       │                                   ▼
+                ┌──────┴──────┐                  ┌─────────────────┐
+                │  SQLite     │◀── 写入 ────────│ WebView 加载源站 │
+                │ (Capacitor) │                  │ + 注入追踪脚本   │
+                └─────────────┘                  └─────────────────┘
+                       ▲                                   │
+                       └────── 翻页/章节跳转上报 ─────────┘</code></pre>
+
+<h3>换源决策</h3>
+<pre><code>用户点「继续阅读」
+        │
+        ▼
+   当前源可用？
+   ┌─── yes ───────────────▶ 直接打开当前源章节页
+   │
+   └─── no  ──┬──────────▶  其他可用源？
+              │            │
+              │            ├─ yes ─▶ 列出可选源 → 用户选择 → 打开
+              │            │
+              │            └─ no ──▶ 提示「暂无可用源」+ 引导导入新规则</code></pre>
+
+<h2 id="architecture">架构设计</h2>
+
+<h3>顶层分层</h3>
+<pre><code>┌──────────────────────────────────────────────────────────────────────┐
+│                          Application Tier                            │
+│  ┌────────────────────────┐         ┌────────────────────────────┐  │
+│  │  apps/extension (MV3)   │         │  apps/mobile (Capacitor)    │  │
+│  │  ┌──────┬──────┬──────┐ │         │  ┌────────────────────────┐ │  │
+│  │  │popup │option│contnt│ │         │  │ pages / reader-shell   │ │  │
+│  │  └──────┴──────┴──────┘ │         │  └────────────────────────┘ │  │
+│  │  background SW          │         │  Capacitor plugins          │  │
+│  └────────────────────────┘         └────────────────────────────┘  │
+│             │   ▲                              │   ▲                │
+│             │   │ 单向依赖                     │   │                │
+└─────────────┼───┼──────────────────────────────┼───┼────────────────┘
+              ▼   │                              ▼   │
+┌──────────────────────────────────────────────────────────────────────┐
+│                        Domain Packages                               │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐     │
+│  │ @manga/types     │  │ @manga/source-  │  │ @manga/injector  │     │
+│  │ (Zod + TS types) │  │ rules           │  │ (detect+track+  │     │
+│  └─────────────────┘  │ (schema+loader)  │  │  Sync Bar)      │     │
+│         ▲             └─────────────────┘  └─────────────────┘     │
+│         │ 所有 packages 可依赖                          ▲           │
+│         │                                               │           │
+│         │            ┌─────────────────────┐           │           │
+│         └────────────┤ @manga/storage-     ├───────────┘           │
+│                      │ adapter (idb+sqlite) │                       │
+│                      └─────────────────────┘                        │
+└──────────────────────────────────────────────────────────────────────┘
+              ▲
+              │ 实现
+              │
+┌──────────────────────────────────────────────────────────────────────┐
+│                       Persistence Tier (本地)                        │
+│   ┌────────────────────┐              ┌──────────────────────────┐   │
+│   │  IndexedDB (扩展)   │              │  SQLite (Capacitor)       │   │
+│   └────────────────────┘              └──────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────┘</code></pre>
+
+<h3>关键架构原则</h3>
+<ol>
+  <li><strong>业务逻辑必须放共享 packages</strong>，不允许在两 apps 各写一份</li>
+  <li><strong>依赖方向单向</strong>：<code>apps/*</code> → <code>packages/*</code>；<code>packages/*</code> 之间允许互依但禁止环</li>
+  <li><strong>平台细节不外泄</strong>：<code>chrome.*</code> 不进 packages；Capacitor 插件不进 packages</li>
+  <li><strong>存储统一抽象</strong>：所有持久化通过 <code>@manga/storage-adapter</code></li>
+  <li><strong>类型唯一来源</strong>：领域类型一律放 <code>@manga/types</code></li>
+</ol>
+
+<h3>Monorepo 布局</h3>
+<pre><code>manga-tracker/
+├── apps/
+│   ├── extension/              # MV3 扩展
+│   │   ├── manifest.config.ts  # CRXJS manifest
+│   │   └── src/
+│   │       ├── popup/          # Popup（书架/最近/设置）
+│   │       ├── options/        # Options 全屏页
+│   │       ├── content/        # Content script + Sync Bar 宿主
+│   │       ├── background/     # Service worker（消息路由+存储写入）
+│   │       ├── stores/         # Zustand stores
+│   │       ├── lib/            # 仅扩展用的工具
+│   │       └── ui/             # 跨入口共享组件
+│   └── mobile/                 # Capacitor Android app
+│       ├── capacitor.config.ts
+│       ├── android/            # Capacitor 生成的工程
+│       └── src/
+│           ├── pages/          # bookshelf / detail / reader / settings
+│           ├── reader-shell/   # WebView 阅读器外壳
+│           └── ...
+├── packages/
+│   ├── types/                  # 领域类型 + Zod schema
+│   ├── source-rules/           # 源规则 schema + loader
+│   ├── injector/               # content script 抽象（扩展+移动端共用）
+│   └── storage-adapter/        # IndexedDB / SQLite 同接口
+├── docs/                       # 工程规范（已落地）
+├── site/                       # 本设计文档（你正在看的）
+├── pnpm-workspace.yaml
+├── turbo.json
+└── package.json</code></pre>
+
+<h2 id="modules">模块设计</h2>
+
+<h3 id="pkg-types">@manga/types</h3>
+<p>领域类型唯一来源。文件按领域切分；类型 + Zod schema 同文件维护，schema 在下，类型 <code>z.infer</code> 出来。</p>
+<pre><code>packages/types/src/
+├── manga.ts          # Manga / Author / Tag
+├── chapter.ts        # Chapter / ReadingProgress
+├── source-rule.ts    # SourceRule / SourceMatcher / SiteAdapter
+├── bookshelf.ts      # BookshelfEntry / SortKey / FilterKey
+└── index.ts          # 统一 re-export</code></pre>
+
+<h3 id="pkg-source-rules">@manga/source-rules</h3>
+<p>源站规则的 schema、加载、版本管理、订阅、热更新。规则文件不在 git 仓库，用户运行时导入或订阅外部 URL。</p>
+<pre><code>packages/source-rules/
+├── src/
+│   ├── schema.ts              # Zod schema 定义 SourceRule v1
+│   ├── loader.ts              # 加载、校验、版本比对、订阅
+│   └── builtin/               # 内置 fallback 规则（仅 example.com 占位）
+└── rules-format.md            # JSON 格式说明（贴给社区贡献者）</code></pre>
+
+<h3 id="pkg-injector">@manga/injector</h3>
+<p>content script 抽象。扩展和移动端 WebView 共用同一份脚本。Sync Bar UI 用 Shadow DOM 完全隔离，不污染原站样式。</p>
+<pre><code>packages/injector/src/
+├── detect.ts         # 用 SourceRule 匹配当前 URL → 返回作品/章节信息
+├── track.ts          # 章节追踪：监听 URL 变化、滚动、阅读时长
+├── sync-bar/         # Sync Bar UI（Shadow DOM 隔离）
+│   ├── index.ts      # 独立 React root
+│   └── styles.css
+└── api.ts            # 暴露给宿主的统一 API（依赖注入）</code></pre>
+
+<p>关键设计：injector <strong>不直接调存储</strong>，通过宿主传入回调。这让 injector 完全平台无关。</p>
+
+<pre><code>// packages/injector/src/api.ts
+export type SyncBarHost = {
+  onAddBook: (m: Manga) =&gt; void;
+  onUpdateProgress: (id: string, ch: number) =&gt; void;
+  isInBookshelf: (id: string) =&gt; Promise&lt;boolean&gt;;
+};
+export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
+
+<h3 id="pkg-storage">@manga/storage-adapter</h3>
+<p>本地存储抽象层。两种实现共享同一接口，用同一组合约测试。</p>
+<pre><code>packages/storage-adapter/src/
+├── adapter.ts          # 接口：BookshelfStore, ProgressStore, SettingsStore
+├── indexeddb/          # 扩展用，基于 Dexie
+├── sqlite/             # mobile 用，基于 capacitor-community/sqlite
+└── index.ts            # 工厂：根据环境返回对应实现</code></pre>
+
+<h2 id="data-flow">数据流</h2>
+
+<h3>三层数据模型</h3>
+<pre><code>┌────────────────────────┐
+│   React 组件 (UI)       │
+└───────────┬────────────┘
+            │ read / write actions
+            ▼
+┌────────────────────────┐
+│  Zustand store          │  ← 内存状态
+│  (bookshelf/source/set) │
+└───────────┬────────────┘
+            │ persist on every write action
+            ▼
+┌────────────────────────┐
+│ @manga/storage-adapter  │  ← 平台无关接口
+└───────────┬────────────┘
+            │
+            ▼
+┌────────────────────────┐
+│ IndexedDB / SQLite      │  ← 本地物理存储
+└────────────────────────┘</code></pre>
+
+<h3>Store 划分</h3>
+<table>
+  <thead><tr><th>Store</th><th>职责</th><th>持久化字段</th></tr></thead>
+  <tbody>
+    <tr><td><code>useBookshelfStore</code></td><td>书架列表、当前选中、最近阅读队列</td><td>全部</td></tr>
+    <tr><td><code>useSourceStore</code></td><td>已加载规则、订阅 URL、启用状态</td><td>订阅 URL + 启用状态</td></tr>
+    <tr><td><code>useSettingsStore</code></td><td>Sync Bar 位置、广告屏蔽、UA 等偏好</td><td>全部</td></tr>
+  </tbody>
+</table>
+
+<h3>跨入口通信（扩展端）</h3>
+<pre><code>┌─────────┐   chrome.runtime.sendMessage   ┌──────────────┐
+│ Popup    │ ────────────────────────────▶ │ Background   │
+└─────────┘                                 │ Service      │
+                                            │ Worker       │
+┌─────────┐   chrome.runtime.sendMessage   │              │
+│ Content  │ ────────────────────────────▶ │ (唯一可写存储 │
+│ Script   │ ◀──────────────────────────── │  的角色)     │
+└─────────┘     status update broadcast    └──────┬───────┘
+                                                   │
+                                                   ▼
+                                            ┌──────────────┐
+                                            │  IndexedDB    │
+                                            └──────────────┘</code></pre>
+<p>消息格式集中在 <code>apps/extension/src/lib/messages.ts</code>，用 discriminated union 类型化。</p>
+
+<h2 id="source-rules">源规则 Schema</h2>
+
+<h3>SourceRule JSON v1（最小骨架）</h3>
+<pre><code>{
+  "$schema": "https://manga-tracker.example/schema/source-rule-v1.json",
+  "id": "site-id-string",
+  "name": "站点显示名",
+  "version": "1.0.0",
+  "matcher": {
+    "domains": ["example.com"]
+  },
+  "selectors": {
+    "manga": {
+      "title": "h1.title",
+      "cover": "img.cover@src",
+      "author": ".author"
+    },
+    "chapter": {
+      "list": "ul.chapter-list li a",
+      "title": ".chapter-title",
+      "number": "regex:第(\\d+)话"
+    },
+    "currentUrl": {
+      "isMangaPage": "regex:/manga/[a-z0-9-]+$",
+      "isChapterPage": "regex:/manga/[a-z0-9-]+/c\\d+"
+    }
+  }
+}</code></pre>
+
+<h3>合规约束（Hard Rule）</h3>
+<div class="callout warn">
+  <strong>不在仓库内硬编码任何盗版漫画站 URL</strong>。代码、测试 fixture、文档 — 一律使用 <code>https://example.com/manga/...</code> 占位。真实运行规则由用户运行时导入，不打包进 release artifact。
+</div>
+
+<h2 id="ui">UI 设计候选</h2>
+
+<p>三套差异化候选，覆盖工具党 / 漫感氛围 / 中文阅读三种气质。<strong>未替用户做选择</strong>。</p>
+
+<div class="grid-3">
+  <div class="card">
+    <h4>A · Tooling Mono</h4>
+    <p style="color:var(--text-soft);font-size:13px;margin:0 0 10px;">严肃工具气质，像 Linear / Raycast。信息密度优先。</p>
+    <p><span class="pill">琥珀黄/靛蓝</span><span class="pill">Inter + 思源黑体</span></p>
+    <p><span class="pill good">v1 成本 ★</span><span class="pill">密度 高</span></p>
+  </div>
+  <div class="card">
+    <h4>B · Inkmono</h4>
+    <p style="color:var(--text-soft);font-size:13px;margin:0 0 10px;">暗色 + 漫画印刷质感（颗粒/墨痕），有自家脸但不二次元。</p>
+    <p><span class="pill">绛红/墨绿+金箔</span><span class="pill">Pretendard + 宋体</span></p>
+    <p><span class="pill warn">v1 成本 ★★★</span><span class="pill">密度 中</span></p>
+  </div>
+  <div class="card">
+    <h4>C · Hanji Reading</h4>
+    <p style="color:var(--text-soft);font-size:13px;margin:0 0 10px;">温润中文阅读气质，豆瓣 + 微信读书 + bgm.tv 混血。</p>
+    <p><span class="pill">茶色/深绿</span><span class="pill">思源宋体 + 黑体</span></p>
+    <p><span class="pill warn">v1 成本 ★★</span><span class="pill">密度 低</span></p>
+  </div>
+</div>
+
+<h3>对比汇总</h3>
+<table>
+  <thead><tr><th>维度</th><th>A · Tooling</th><th>B · Inkmono</th><th>C · Hanji</th></tr></thead>
+  <tbody>
+    <tr><td>气质</td><td>严肃工具</td><td>暗色漫感</td><td>文气阅读</td></tr>
+    <tr><td>信息密度</td><td>高</td><td>中</td><td>低</td></tr>
+    <tr><td>首屏惊艳度</td><td>低（克制）</td><td><strong>高（独特）</strong></td><td>中</td></tr>
+    <tr><td>暗色长读舒适度</td><td>★★</td><td>★★★</td><td>★★★</td></tr>
+    <tr><td>Sync Bar 注入第三方站兼容</td><td><strong>最好</strong></td><td>中</td><td>中</td></tr>
+    <tr><td>社交分享 / 截图传播力</td><td>弱</td><td><strong>强</strong></td><td>中</td></tr>
+    <tr><td>CJK 排版精致度</td><td>标准</td><td>中性</td><td><strong>最精致</strong></td></tr>
+    <tr><td>主要风险</td><td>"和 GitHub 一样"</td><td>颗粒过头变二次元</td><td>宋体小字号渲染问题</td></tr>
+  </tbody>
+</table>
+
+<h3>Sync Bar 形态对比（折叠态 → 展开态）</h3>
+<pre><code>A · Tooling Mono
+ 折叠 [ ● ]  →  展开 [ 📕 一拳超人 · ch.182  [+ 加入]              ]
+              方块圆角 36px 高，文字+图标，单色 accent
+
+B · Inkmono
+ 折叠 [░▓▓▓░] →  展开 [▓ [封面] 一拳超人 · ch.182      [+ 金黄 CTA] ]
+              墨章感圆形，44px 高，5% opacity 颗粒覆盖
+
+C · Hanji Reading
+ 折叠 [ 🔖  ] →  展开 [一拳超人 · 第 182 话         [加入]         ]
+              书签气质 32px 圆形无颗粒，宋体粗体标题</code></pre>
+
+<h2 id="stack">技术栈</h2>
+
+<table>
+  <thead><tr><th>层</th><th>选型</th><th>理由</th></tr></thead>
+  <tbody>
+    <tr><td>Monorepo</td><td>pnpm workspaces + Turborepo</td><td>单人维护成本最低；Turborepo 任务编排开箱即用</td></tr>
+    <tr><td>语言</td><td>TypeScript 5.x（strict）</td><td>跨端类型唯一来源依赖 TS 推导和共享</td></tr>
+    <tr><td>Lint/Format</td><td>Biome</td><td>替代 ESLint+Prettier，monorepo 性能更好</td></tr>
+    <tr><td>测试</td><td>Vitest</td><td>统一 packages + apps，配置最简</td></tr>
+    <tr><td>扩展打包</td><td>CRXJS（Vite 插件）</td><td>MV3 扩展业界标配，HMR 友好</td></tr>
+    <tr><td>移动端容器</td><td>Capacitor 6.x</td><td>React 代码与扩展共享率最高（vs RN/Flutter）</td></tr>
+    <tr><td>UI 库</td><td>React 18 + Tailwind v4</td><td>v4 用 Lightning CSS，扩展场景体积小</td></tr>
+    <tr><td>状态</td><td>Zustand</td><td>轻量，跨端 store 代码可部分共享</td></tr>
+    <tr><td>Schema</td><td>Zod</td><td>边界校验（用户导入数据 / 源规则）</td></tr>
+    <tr><td>本地存储（扩展）</td><td>Dexie.js (IndexedDB)</td><td>避免裸 IDB API</td></tr>
+    <tr><td>本地存储（mobile）</td><td>@capacitor-community/sqlite</td><td>带加密支持</td></tr>
+  </tbody>
+</table>
+
+<h2 id="standards">工程规范</h2>
+
+<p>规范脚手架已落地到 <code>docs/</code>，遵循 <code>CONTRIBUTING.md</code> + <code>docs/&lt;domain&gt;/{index,rules}.md</code> 二层结构：</p>
+
+<table>
+  <thead><tr><th>域</th><th>路径</th><th>关键约束</th></tr></thead>
+  <tbody>
+    <tr><td>Architecture</td><td><code>docs/architecture/</code></td><td>包边界、依赖方向、合规底线（不预置盗版 URL）</td></tr>
+    <tr><td>Coding</td><td><code>docs/coding/</code></td><td>strict TS、Zod 在边界、不写防御代码、命名约定</td></tr>
+    <tr><td>UI</td><td><code>docs/ui/</code></td><td>占位（待 UI 候选选定后填充）</td></tr>
+    <tr><td>Testing</td><td><code>docs/testing/</code></td><td>合约测试、不 fetch 真实漫画站、fixture 脱敏</td></tr>
+    <tr><td>AI Guide</td><td><code>docs/ai-guide/</code></td><td>AI 阅读顺序、与 flow-* skills 协作</td></tr>
+  </tbody>
+</table>
+
+<h3>提交流程</h3>
+<ul>
+  <li>Conventional Commits：<code>type(scope): summary</code></li>
+  <li>scopes：<code>extension</code> / <code>mobile</code> / <code>source-rules</code> / <code>injector</code> / <code>types</code> / <code>storage</code> / <code>repo</code> / <code>docs</code></li>
+  <li>本地必须通过 <code>pnpm check && pnpm test</code> 才 push</li>
+  <li>不直接 commit 到 main，所有改动走 PR（自己 review 自己也走）</li>
+</ul>
+
+<h2 id="roadmap">路线图</h2>
+
+<h3>Phase 1（6-8 周）— 当前</h3>
+<table>
+  <thead><tr><th>周次</th><th>目标</th><th>交付</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Monorepo 初始化 + 共享 packages 骨架</td><td>types / source-rules / storage-adapter 接口</td></tr>
+    <tr><td>2-3</td><td>扩展 MVP + 第一个站点适配</td><td>识别 + 追踪 + Sync Bar + Popup 跑通</td></tr>
+    <tr><td>4-5</td><td>移动端 MVP</td><td>书架 + 详情 + WebView 阅读器外壳</td></tr>
+    <tr><td>6</td><td>跨端联调 + 适配 3-5 个站点</td><td>能装在自己手机上跑完整流程</td></tr>
+    <tr><td>7-8</td><td>打磨、自测、修 bug</td><td>朋友试用版 debug APK + 扩展 zip</td></tr>
+  </tbody>
+</table>
+
+<h3>Phase 2（之后 3-6 个月）</h3>
+<ul>
+  <li>Web 追踪平台（详情页 + 评论 + 推荐 + 公开书架页 → SEO 入口）</li>
+  <li>云端同步后端（Supabase 起步，自建可后期切）</li>
+  <li>iOS sideload（TestFlight / AltStore）</li>
+  <li>正版源对接（哔哩哔哩漫画 / 快看 / 腾讯动漫）</li>
+</ul>
+
+<h3>Phase 3（用户 1-5 万）</h3>
+<ul>
+  <li>商业化：云同步订阅、统计、自定义主题</li>
+  <li>社交：评论、关注、活动流、公开书架</li>
+  <li>B 端探索：创作者后台 / 数据榜单 / CPS</li>
+</ul>
+
+<h2 id="deploy">Cloudflare 部署</h2>
+
+<p>本设计文档站（<code>site/</code>）部署到 <strong>Cloudflare Pages</strong>，从 GitHub 仓库自动构建。配置在 <code>site/wrangler.toml</code> 和 <code>site/_headers</code>。</p>
+
+<h3>一次性配置</h3>
+<ol>
+  <li>把项目推到 GitHub：
+    <pre><code>cd /Users/falcom/Documents/projects/manga-tracker
+git init -b main
+git remote add origin git@github.com:YeomanYe/manga-tracker.git
+git add .
+git commit -m "chore(repo): initial design + scaffolding"
+git push -u origin main</code></pre>
+  </li>
+  <li>登录 <a href="https://dash.cloudflare.com/?to=/:account/pages">Cloudflare Pages 控制台</a></li>
+  <li>点 <strong>Create a project → Connect to Git</strong>，选 <code>YeomanYe/manga-tracker</code></li>
+  <li>构建配置：
+    <ul>
+      <li>Framework preset: <code>None</code></li>
+      <li>Build command: <em>留空</em>（纯静态 HTML，无需构建）</li>
+      <li>Build output directory: <code>site</code></li>
+      <li>Root directory: <code>/</code></li>
+    </ul>
+  </li>
+  <li>点 Deploy。Pages 会给你一个 <code>manga-tracker.pages.dev</code> 域名，每次 push 到 main 自动部署</li>
+</ol>
+
+<h3>自定义域名（可选）</h3>
+<p>如果你要绑自己的域名（比如 <code>docs.yourbrand.com</code>），在 Pages 项目的 <strong>Custom domains</strong> 里添加，按提示加 CNAME 记录到你的 DNS（推荐用 Cloudflare DNS，全自动）。</p>
+
+<h3>预览部署（PR 自动）</h3>
+<p>Pages 默认会为每个 PR 自动起一个 preview 部署，URL 形如 <code>&lt;commit-sha&gt;.manga-tracker.pages.dev</code>。一个人开发时这个特性也很有用：可以在合并前先看新版长什么样。</p>
+
+<h3>本地预览</h3>
+<pre><code># 用任何静态服务器都行，例如：
+cd site
+python3 -m http.server 8000
+# → http://localhost:8000
+
+# 或者用 wrangler 模拟 Pages 环境：
+npx wrangler pages dev site</code></pre>
+
+<h2 id="decisions">开放决策</h2>
+
+<p>以下事项需要你拍板后才能进入 v1 实现阶段：</p>
+
+<table>
+  <thead><tr><th>编号</th><th>决策</th><th>当前默认</th><th>状态</th></tr></thead>
+  <tbody>
+    <tr><td>D1</td><td>移动端框架</td><td>Capacitor</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D2</td><td>状态管理</td><td>Zustand</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D3</td><td>首批适配 3-5 个中文漫画站</td><td>动漫之家 &gt; 漫画柜 &gt; 拷贝漫画 &gt; 看漫画 &gt; 哔咔（按优先级）</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D4</td><td>导入导出格式</td><td>JSON</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D5</td><td>同 WiFi 局域网双端同步</td><td>v1 不做</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D6</td><td>首批源规则谁来写</td><td>自己写</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D7</td><td><strong>UI 设计候选选定</strong>（A / B / C）</td><td>—</td><td><span class="pill warn">待定</span></td></tr>
+    <tr><td>D8</td><td>设计文档站自定义域名</td><td>暂用 *.pages.dev</td><td><span class="pill warn">待定</span></td></tr>
+  </tbody>
+</table>
+
+<hr />
+
+<p style="color:var(--text-mute); font-size:13px;">
+  本文档由 <code>flow-project-bootstrap</code> 链路编排产出（<code>project-prep</code> + <code>project-rules-design</code> + <code>ui-ux-pro-max</code>）。后续修订请走 <code>flow-dev-task</code>。
+</p>
+
+</main>
+</div>
+
+<script>
+  // theme toggle
+  const btn = document.getElementById('theme-btn');
+  const root = document.documentElement;
+  const saved = localStorage.getItem('theme');
+  if (saved) root.dataset.theme = saved;
+  btn.addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    localStorage.setItem('theme', next);
+  });
+
+  // section nav highlight
+  const links = document.querySelectorAll('nav a[href^="#"]');
+  const sections = [...document.querySelectorAll('main h1[id], main h2[id]')];
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach(l => l.classList.toggle('cur', l.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { rootMargin: '-30% 0px -65% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+# 01 — Project Prep Brief
+
+> 第一阶段（6-8 周）的 MVP 范围、主交互、技术栈、Preview 决策。
+> 这份是 kickoff 锚点，后续工程规范和设计系统都基于它。
+
+## Product Intent
+
+中文漫画追踪 + 换源工具：用户在已适配的中文漫画站浏览时自动同步阅读进度到本地书架；移动端能从书架跳回任意可用源继续阅读，并支持源站之间手动换源。
+
+## Target Users
+
+- **主要**：中文漫画爱好者，常年在多个第三方漫画站之间跳转，需要统一书架和进度，且不想手动打卡。
+- **次要**：bgm.tv / AniList 用户中追漫画为主、嫌手动记进度太烦的子群。
+- **现状替代方案**：
+  - Mihon（Tachiyomi 分叉）—— 移动端原生阅读器，但 PC 浏览器无追踪
+  - MAL-Sync —— 浏览器扩展，但中文站点几乎没覆盖
+  - bgm.tv —— 手动打卡，体验过时
+
+## Core Flow
+
+### 扩展端 happy path（PC）
+
+1. 用户在已适配漫画站打开作品页 → content script 自动识别 → 在页面右下注入 **Sync Bar**
+2. Sync Bar 显示「+ 加入书架」状态化按钮 → 用户点击 → 写入本地书架，按钮变「✓ 在书架」
+3. 用户读章节 → content script 检测章节翻页 → 自动写入进度，浮现 toast「已记录第 X 话」
+4. 切到另一部作品继续读 → 同样自动追踪
+5. 用户点扩展图标打开 Popup → 浏览跨站书架、最近阅读、跳设置
+
+### 移动端 happy path（Android）
+
+1. 打开 app → 本地书架（按最近阅读排序）
+2. 点作品 → 详情页：上次读到第 X 话 + 可用源列表
+3. 点「继续阅读」→ WebView 打开源站对应章节
+4. 翻页 → 注入脚本继续追踪进度（与扩展共用同一份脚本）
+5. 当前源打不开 → 手动换源继续
+
+## Main Interaction Design
+
+### 浏览器扩展
+
+#### Screens
+
+| 屏幕 | 形态 | 内容 |
+|---|---|---|
+| **Sync Bar**（注入到页面） | 右下浮动小条，默认折叠为图标 | 主操作入口；状态化按钮：识别中 / + 加入书架 / ✓ 已在书架 / 📖 上次第 X 话，继续；章节翻页时浮现 toast |
+| **Popup**（360×500） | 工具栏图标弹出 | 跨站书架快速浏览；最近阅读列表（5 条）；跳 Options；底部 Tab：书架 / 最近 / 设置 |
+| **Options 全屏页** | `chrome://extensions/options` | 完整书架管理（搜索、按源分组、批量删）；源规则订阅（添加 JSON URL、启用/禁用）；数据导入导出 |
+
+#### Sync Bar 规格
+
+- 默认折叠成一个 32×32 圆形图标，贴在页面右下，不遮挡内容
+- 识别到作品后展开为一行（包含状态按钮 + 当前章节信息）
+- 章节翻页时浮现 toast「已记录第 X 话」（2 秒淡出）
+- 用户可在 Options 调整：位置（左下/右下/左上/右上）、是否默认折叠、是否显示 toast
+- 通过 Shadow DOM 隔离样式，不污染原站
+
+#### State transitions
+
+- `识别中` → `已识别（未在书架）`：Sync Bar 显示「+ 加入书架」
+- `已识别（未在书架）` → 用户点加入 → `已识别（已在书架）`：按钮变「✓」
+- `已识别（已在书架）` + 章节翻页 → `进度更新中` → `已更新`：toast「已记录第 X 话」
+- `识别失败`：Sync Bar 显示警告图标 + 提示「检查规则版本 / 上报」
+
+### 移动端 App
+
+#### Screens
+
+| 屏幕 | 内容 |
+|---|---|
+| **书架**（首页） | 顶部搜索 + 视图切换（网格/列表）；卡片含封面、标题、上次读到、源徽章、未读数；底部 Tab：书架 / 发现（占位）/ 我的 |
+| **作品详情** | 封面 + 标题 + 作者 + 简介；章节列表（当前源），上次读到高亮；右上：源切换按钮；底部「继续阅读」醒目 CTA |
+| **WebView 阅读器** | 顶部：返回 + 章节标题 + 源标识；主体：源站章节页（注入广告屏蔽 + 移动 CSS 适配 + 追踪脚本）；底部浮动：上/下一章 / 章节列表 |
+| **设置** | 源规则订阅（同扩展端）/ 数据导入导出（与扩展互通 JSON）/ WebView 行为（广告屏蔽、UA） |
+| **添加作品**（手动） | 粘贴源站 URL → 用规则解析 → 预览作品信息 → 加入书架 |
+
+#### State transitions
+
+- 书架空 → 引导「装扩展开始追踪」或「手动添加 URL」
+- 详情加载：loading / error / empty 三态显式
+- 「继续阅读」决策：当前源可用 → 直跳；否则提示换源
+- WebView 加载失败 → 提示换源或重试
+
+## MVP Scope
+
+### In scope（第一阶段必做）
+
+- 扩展：识别 + 追踪 + Sync Bar + Popup（书架/最近/设置）+ Options（书架管理 + 源订阅）
+- App：本地书架 + 详情页 + WebView 阅读器（含注入）+ 源切换 + 设置
+- 共享 packages：源规则 JSON schema、注入脚本接口、TS 类型、存储适配层
+- 适配 **3-5 个中文漫画站**（首批待定，候选：动漫之家 / 漫画柜 / 拷贝漫画 / 看漫画 / 哔咔）
+- 本地存储：扩展 IndexedDB（Dexie），app SQLite（Capacitor 插件）
+- 扩展 ↔ app 互通的 JSON 手动导入导出
+
+### Out of scope（推迟到第二阶段）
+
+- 跨设备云同步、用户登录、Web 追踪平台
+- 社交（评论 / 关注 / 活动流）、推荐 / 榜单
+- iOS app、Play Store 上架
+- 实时双向同步
+
+### Non-goals（明确不做）
+
+- 不做内置原生阅读器（始终 WebView，不解析章节图片）
+- 不分发任何漫画内容
+- 不预置盗版源 URL（规则全靠用户导入/订阅第三方仓库）
+- 不在自己服务器做爬虫（所有抓取发生在用户的浏览器/手机里）
+
+## Primary Tech Stack
+
+### Monorepo
+
+- pnpm workspaces + Turborepo
+- TypeScript 5.x
+- Biome（替代 ESLint + Prettier）
+
+### 浏览器扩展（`apps/extension`）
+
+- Manifest V3
+- React 18 + Vite 5 + **CRXJS**（Vite 扩展打包插件）
+- Tailwind CSS 4.x
+- Dexie.js（IndexedDB 封装）
+- Zustand（状态管理）
+
+### 移动端 App（`apps/mobile`）
+
+- **Capacitor 6.x**（推荐：React 代码与扩展共享率最高）
+- React 18 + Vite 5（同栈）
+- Tailwind CSS 4.x
+- `@capacitor-community/sqlite`（带加密支持）
+- Zustand（store 代码部分跨端复用）
+- Capacitor Browser 插件 / 自定义 WebView 包装（注入 content script）
+
+### 共享 packages
+
+- `packages/source-rules`：源规则 Zod schema + 加载器
+- `packages/injector`：content script 接口（识别 + 追踪 hook 抽象，扩展和 app 共用）
+- `packages/types`：领域类型（Manga / Chapter / ReadingProgress / SourceRule）
+- `packages/storage-adapter`：存储抽象层（IndexedDB / SQLite 同接口）
+
+### 构建 / 工具
+
+- Vitest（单测）
+- Capacitor build → Android Studio → debug APK
+
+## Preview Decision
+
+- **Status: Not needed**
+- **Why**：
+  扩展和 app 的 UI 层都是 React + Vite，`vite dev` 本身就是持续可迭代的 preview——改代码刷新即可看到效果。再叠一层 mock shell 是重复造轮子。
+  - 扩展 popup / options 在 dev server 当普通 web 页直接走查
+  - 移动 app 的 React UI 用 Capacitor live-reload，浏览器和真机都能即时刷新
+  - 唯一不能 preview 的是 content script 真实注入、WebView 真实抓取、源规则真实匹配——这部分本来就要在真实站点跑，mock 不出价值
+- **Surface**: N/A（dev server 即 preview）
+- **Data strategy**: N/A（开发期用本地 fixture JSON 灌入 IndexedDB / SQLite，跑真实存储链路）
+- **Validation sequence**：
+  1. UI 走查：`vite dev` 浏览器打开 popup / app 主入口
+  2. 扩展真实验证：unpacked load → 在目标漫画站测试识别和追踪
+  3. App 真实验证：构建 debug APK → 装自己手机 → 跑完整流程
+
+## Open Decisions
+
+1. **首批适配站点清单（3-5 个）**：候选 动漫之家 / 漫画柜 / 拷贝漫画 / 看漫画 / 哔咔。每个站反爬/CDN/章节结构难度不同，需评估优先级。
+2. **Capacitor vs RN 终选**：本简报推荐 Capacitor（代码共享率最高、单人维护成本最低），RN 性能略好但跨端共享差。
+3. **Zustand vs Jotai**：建议 Zustand（更主流、API 更简单）。
+4. **导入导出格式**：JSON 是否够（人可读、便于 git 备份）？还是要二进制压缩？
+5. **同 WiFi 局域网双端互通**：第一阶段建议不做，等云同步前可以考虑。
+6. **首批站点的源规则谁来写**：建议自己写（最快迭代规则 schema），社区贡献放第二阶段。
+
+## Post-MVP Roadmap（第二阶段及之后）
+
+| 项目 | 触发时机 | 说明 |
+|---|---|---|
+| Web 追踪平台 | 第一阶段验证完成、用户量 > 1000 | 详情页 + 评论 + 推荐 + 公开书架页（SEO 入口）|
+| 云端同步后端 | Web 平台上线后立即跟上 | Supabase 起步，自建可后期切 |
+| iOS sideload | Android 验证后 1-2 月 | TestFlight / AltStore 分发 |
+| 社交 / 评论 / 榜单 | 用户量 > 5000 | Web 端为主入口 |
+| 商业化（订阅） | 用户量 > 10000 | 云同步、统计、自定义主题作为付费墙 |
+| 局域网同步 | 用户反馈强烈时 | 云同步上线后可能不再需要 |
+| 多人共享书架 / 推荐流 | 社交功能稳定后 | 形成社区飞轮 |
+| 正版源对接（哔哩哔哩漫画 / 快看 / 腾讯动漫） | 商业化前 | 转向"半合规阅读器"定位，铺平上架可能性 |
+| B 端：创作者后台 / 数据榜单 / CPS | 用户量 > 50000 | 真正的盈利天花板路径 |
+
+**规模预期**：
+- MVP（6-8 周）：自用 + 朋友试用，几十人量级
+- 6 个月：1000 用户（早期种子）
+- 12 个月：1 万用户（订阅可启动）
+- 24 个月：10 万用户（B 端可启动）
+- 天花板：参考动漫之家盛期，约 200 万 DAU
