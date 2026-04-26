@@ -20,10 +20,11 @@
 
 ## 技术栈
 
-- pnpm + Turborepo + TypeScript
-- 扩展：MV3 + React 18 + Vite + CRXJS + Dexie.js
-- 移动端：Capacitor 6 + React 18 + Vite + capacitor-community/sqlite
-- 共享：Zustand、Tailwind v4、Zod、Biome
+- pnpm + Turborepo + TypeScript + Biome
+- **扩展（Plasmo 0.89+）**：跨浏览器 manifest（Chrome / Edge / Firefox / Safari）+ React 18 + Tailwind v4 + Dexie.js
+- **移动端（Capacitor 6 + Android）**：React 18 + Vite + capacitor-community/sqlite
+- **源规则兼容**：legado 漫画书源（V1 主力，复用中文社区资源）+ 自有 v1 格式 + Mihon port（V2）
+- 共享：Zustand、Zod
 
 详见 `docs/01-project-prep.md`。
 

@@ -444,15 +444,16 @@
 <h3>Monorepo 布局</h3>
 <pre><code>manga-tracker/
 ├── apps/
-│   ├── extension/              # MV3 扩展
-│   │   ├── manifest.config.ts  # CRXJS manifest
+│   ├── extension/              # 浏览器扩展（Plasmo 多浏览器）
+│   │   ├── package.json        # 含 Plasmo manifest 字段（permissions/host_permissions 等）
+│   │   ├── popup.tsx           # Popup 入口（Plasmo 约定）
+│   │   ├── options.tsx         # Options 全屏页（Plasmo 约定）
+│   │   ├── background.ts       # Service Worker 入口
+│   │   ├── contents/
+│   │   │   └── sync-bar.tsx    # Sync Bar 注入（Plasmo CSUI 挂载点 + @manga/injector 渲染）
 │   │   └── src/
-│   │       ├── popup/          # Popup（书架/最近/设置）
-│   │       ├── options/        # Options 全屏页
-│   │       ├── content/        # Content script + Sync Bar 宿主
-│   │       ├── background/     # Service worker（消息路由+存储写入）
 │   │       ├── stores/         # Zustand stores
-│   │       ├── lib/            # 仅扩展用的工具
+│   │       ├── lib/            # 消息桥 / storage 桥（仅扩展用）
 │   │       └── ui/             # 跨入口共享组件
 │   └── mobile/                 # Capacitor Android app
 │       ├── capacitor.config.ts
@@ -484,13 +485,18 @@
 └── index.ts          # 统一 re-export</code></pre>
 
 <h3 id="pkg-source-rules">@manga/source-rules</h3>
-<p>源站规则的 schema、加载、版本管理、订阅、热更新。规则文件不在 git 仓库，用户运行时导入或订阅外部 URL。</p>
+<p>源规则的 wire format <strong>多源兼容设计</strong>：直接 import 现有开源漫画工具的规则资源（legado / Mihon / 自有 v1），全部归一化到内部模型。详见 <a href="#source-rules">源规则 Schema</a> 章节。</p>
 <pre><code>packages/source-rules/
 ├── src/
-│   ├── schema.ts              # Zod schema 定义 SourceRule v1
-│   ├── loader.ts              # 加载、校验、版本比对、订阅
-│   └── builtin/               # 内置 fallback 规则（仅 example.com 占位）
-└── rules-format.md            # JSON 格式说明（贴给社区贡献者）</code></pre>
+│   ├── schema.ts                # 内部统一模型的 Zod schema
+│   ├── loader.ts                # 入口：detect format → 路由到 adapter → 归一化
+│   ├── adapters/                # 各 wire format 转换器
+│   │   ├── manga-tracker-v1.ts  # 我们自己的原生格式
+│   │   ├── legado-v3.ts         # 阅读 App 漫画书源 import（V1 主力）
+│   │   └── mihon-port.ts        # Mihon Kotlin 手动 port 后的 JSON（V2）
+│   ├── runtime/                 # 选择器执行：CSS / XPath / regex / @JS
+│   └── builtin/                 # 占位规则（仅 example.com）
+└── rules-format.md              # 内部 schema + 各 adapter 输入说明</code></pre>
 
 <h3 id="pkg-injector">@manga/injector</h3>
 <p>content script 抽象。扩展和移动端 WebView 共用同一份脚本。Sync Bar UI 用 Shadow DOM 完全隔离，不污染原站样式。</p>
@@ -571,8 +577,27 @@ export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
 
 <h2 id="source-rules">源规则 Schema</h2>
 
-<h3>SourceRule JSON v1（最小骨架）</h3>
+<p>核心策略：<strong>不重复造轮子</strong>。借鉴现有开源漫画工具的成熟规则资源，loader 多 format 兼容。</p>
+
+<h3>生态参考与兼容矩阵</h3>
+<table>
+  <thead><tr><th>项目</th><th>形态</th><th>中文站覆盖</th><th>我们的策略</th></tr></thead>
+  <tbody>
+    <tr><td><strong>legado（阅读）漫画书源</strong></td><td>JSON + 内嵌 JS</td><td><strong>极强</strong>，中文社区主力</td><td>V1 主力路径：wire format 兼容，loader 直接 import</td></tr>
+    <tr><td>Tachiyomi / Mihon</td><td>Kotlin extension（JVM）</td><td>强但偏英日</td><td>内部模型抄它的 manga-native 接口设计；V2 经 Suwayomi-Server 桥接</td></tr>
+    <tr><td>MAL-Sync ChibiScript</td><td>JSON 操作链</td><td>弱</td><td>仅参考"规则可热更新"思路</td></tr>
+  </tbody>
+</table>
+
+<h3>Wire Format 判别（loader 入口）</h3>
+<p>所有传入规则 JSON 必须带 <code>format</code> 字段，loader 据此路由到对应 adapter，归一化到内部模型。无 <code>format</code> 字段 → 报错，不猜测。</p>
+<pre><code>{ "format": "manga-tracker-v1", "id": "...",            "rules": { ... } }
+{ "format": "legado-v3",        "bookSourceUrl": "...", "ruleManga": { ... }, "ruleChapter": { ... } }
+{ "format": "mihon-port",       "lang": "zh", "id": 12345, "name": "...", "selectors": { ... } }</code></pre>
+
+<h3>内部模型（manga-tracker-v1 原生格式）</h3>
 <pre><code>{
+  "format": "manga-tracker-v1",
   "$schema": "https://manga-tracker.example/schema/source-rule-v1.json",
   "id": "site-id-string",
   "name": "站点显示名",
@@ -598,9 +623,12 @@ export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
   }
 }</code></pre>
 
+<h3>legado-v3 兼容（V1 主力路径）</h3>
+<p>用户从 legado 社区拿到漫画书源 JSON URL（或文件）→ 我们的设置页粘贴 → loader detect <code>format: "legado-v3"</code> → adapter 转换 → 写入内部模型。<strong>零成本起步：首次安装可一键导入"社区精选 legado 漫画书源包"，瞬间获得几百个源。</strong></p>
+
 <h3>合规约束（Hard Rule）</h3>
 <div class="callout warn">
-  <strong>不在仓库内硬编码任何盗版漫画站 URL</strong>。代码、测试 fixture、文档 — 一律使用 <code>https://example.com/manga/...</code> 占位。真实运行规则由用户运行时导入，不打包进 release artifact。
+  <strong>不在仓库内硬编码任何盗版漫画站 URL</strong>。代码、测试 fixture、文档 — 一律使用 <code>https://example.com/manga/...</code> 占位。真实运行规则由用户运行时导入，不打包进 release artifact。legado 兼容代码本身可开源；默认订阅 URL 不指向真实盗版源。
 </div>
 
 <h2 id="ui">UI 设计候选</h2>
@@ -665,7 +693,7 @@ C · Hanji Reading
     <tr><td>语言</td><td>TypeScript 5.x（strict）</td><td>跨端类型唯一来源依赖 TS 推导和共享</td></tr>
     <tr><td>Lint/Format</td><td>Biome</td><td>替代 ESLint+Prettier，monorepo 性能更好</td></tr>
     <tr><td>测试</td><td>Vitest</td><td>统一 packages + apps，配置最简</td></tr>
-    <tr><td>扩展打包</td><td>CRXJS（Vite 插件）</td><td>MV3 扩展业界标配，HMR 友好</td></tr>
+    <tr><td>扩展框架</td><td><strong>Plasmo 0.89+</strong></td><td>多浏览器（Chrome/Edge/Firefox/Safari），CSUI 内建支持 Sync Bar 注入；CRXJS 在跨浏览器场景下要自己拼 manifest</td></tr>
     <tr><td>移动端容器</td><td>Capacitor 6.x</td><td>React 代码与扩展共享率最高（vs RN/Flutter）</td></tr>
     <tr><td>UI 库</td><td>React 18 + Tailwind v4</td><td>v4 用 Lightning CSS，扩展场景体积小</td></tr>
     <tr><td>状态</td><td>Zustand</td><td>轻量，跨端 store 代码可部分共享</td></tr>
@@ -717,6 +745,7 @@ C · Hanji Reading
   <li>Web 追踪平台（详情页 + 评论 + 推荐 + 公开书架页 → SEO 入口）</li>
   <li>云端同步后端（Supabase 起步，自建可后期切）</li>
   <li>iOS sideload（TestFlight / AltStore）</li>
+  <li><strong>Mihon Kotlin 扩展集成</strong>（经 Suwayomi-Server REST 桥接，扩大英日内容覆盖）</li>
   <li>正版源对接（哔哩哔哩漫画 / 快看 / 腾讯动漫）</li>
 </ul>
 
@@ -781,9 +810,10 @@ npx wrangler pages dev site</code></pre>
     <tr><td>D3</td><td>首批适配 3-5 个中文漫画站</td><td>动漫之家 &gt; 漫画柜 &gt; 拷贝漫画 &gt; 看漫画 &gt; 哔咔（按优先级）</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D4</td><td>导入导出格式</td><td>JSON</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D5</td><td>同 WiFi 局域网双端同步</td><td>v1 不做</td><td><span class="pill good">已确认</span></td></tr>
-    <tr><td>D6</td><td>首批源规则谁来写</td><td>自己写</td><td><span class="pill good">已确认</span></td></tr>
-    <tr><td>D7</td><td><strong>UI 设计候选选定</strong>（A / B / C）</td><td>—</td><td><span class="pill warn">待定</span></td></tr>
-    <tr><td>D8</td><td>设计文档站自定义域名</td><td>暂用 *.pages.dev</td><td><span class="pill warn">待定</span></td></tr>
+    <tr><td>D6</td><td>首批源规则来源（已修订）</td><td><strong>import legado 漫画书源</strong>，自己写仅作兜底</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D7</td><td>扩展打包工具</td><td><strong>Plasmo</strong>（多浏览器，CSUI 内建）</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D8</td><td><strong>UI 设计候选选定</strong>（A / B / C）</td><td>—</td><td><span class="pill warn">待定</span></td></tr>
+    <tr><td>D9</td><td>设计文档站自定义域名</td><td>暂用 *.pages.dev</td><td><span class="pill warn">待定</span></td></tr>
   </tbody>
 </table>
 

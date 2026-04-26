@@ -115,10 +115,11 @@
 
 ### 浏览器扩展（`apps/extension`）
 
-- Manifest V3
-- React 18 + Vite 5 + **CRXJS**（Vite 扩展打包插件）
-- Tailwind CSS 4.x
-- Dexie.js（IndexedDB 封装）
+- **Plasmo 0.89+** —— 多浏览器扩展框架，自动产出 Chrome / Edge / Firefox / Safari 多份 manifest，CSUI 内建支持 Sync Bar 注入
+- React 18 + Tailwind CSS 4.x
+- Plasmo CSUI 仅作"挂载点"，UI 渲染逻辑仍由 `@manga/injector` 提供（保持注入逻辑跨端复用）
+- Plasmo Storage / Messaging API **仅在 `apps/extension` 内部使用**，不污染 `packages/*`
+- Dexie.js（IndexedDB，作为 storage-adapter 的扩展端实现）
 - Zustand（状态管理）
 
 ### 移动端 App（`apps/mobile`）
@@ -132,10 +133,22 @@
 
 ### 共享 packages
 
-- `packages/source-rules`：源规则 Zod schema + 加载器
+- `packages/source-rules`：源规则 Zod schema + 加载器，**支持多种 wire format 互通**（legado-v3 / mihon-port / manga-tracker-v1），全部归一化到内部模型
 - `packages/injector`：content script 接口（识别 + 追踪 hook 抽象，扩展和 app 共用）
 - `packages/types`：领域类型（Manga / Chapter / ReadingProgress / SourceRule）
 - `packages/storage-adapter`：存储抽象层（IndexedDB / SQLite 同接口）
+
+### 源规则生态策略（关键）
+
+不重复造轮子。借鉴现有开源漫画工具的成熟资源：
+
+| 项目 | 形态 | 中文站覆盖 | 我们的策略 |
+|---|---|---|---|
+| **legado（阅读）漫画书源** | JSON + 内嵌 JS | **极强**，中文社区主力 | **wire format 兼容**，loader 直接 import |
+| **Tachiyomi / Mihon** | Kotlin extension（JVM） | 强但偏英日 | 内部模型抄它的 manga-native 接口设计；运行级集成放 V2（经 Suwayomi-Server 桥接） |
+| **MAL-Sync ChibiScript** | JSON 操作链 | 弱 | 仅参考"规则可热更新"思路 |
+
+V1 默认行为：**用户从 legado 社区导入已有的漫画书源 URL** → 我们的 loader 自动转换 → 写入本地。这样 day 1 就有几百个源可用，不必自己写。
 
 ### 构建 / 工具
 
@@ -164,7 +177,8 @@
 3. **Zustand vs Jotai**：建议 Zustand（更主流、API 更简单）。
 4. **导入导出格式**：JSON 是否够（人可读、便于 git 备份）？还是要二进制压缩？
 5. **同 WiFi 局域网双端互通**：第一阶段建议不做，等云同步前可以考虑。
-6. **首批站点的源规则谁来写**：建议自己写（最快迭代规则 schema），社区贡献放第二阶段。
+6. **首批源规则来源（已修订）**：直接 import legado（阅读）社区已有的中文漫画书源 → loader 转换为内部模型。原"自己写 5 个"路径降级为兜底（针对 legado 没覆盖的站点）。开发量从 5 周缩到 1-2 周。
+7. **扩展打包工具**：Plasmo（多浏览器，CSUI 内建）vs CRXJS（Chrome MV3 为主，更轻）。当前选 Plasmo，因为 Firefox / Safari 是潜在收益。
 
 ## Post-MVP Roadmap（第二阶段及之后）
 
@@ -176,6 +190,7 @@
 | 社交 / 评论 / 榜单 | 用户量 > 5000 | Web 端为主入口 |
 | 商业化（订阅） | 用户量 > 10000 | 云同步、统计、自定义主题作为付费墙 |
 | 局域网同步 | 用户反馈强烈时 | 云同步上线后可能不再需要 |
+| Mihon Kotlin 扩展集成 | legado 覆盖不足 + 用户多语言需求 | 内置 Suwayomi-Server 桥接（需要轻后端），扩展 mihon-port format 支持 |
 | 多人共享书架 / 推荐流 | 社交功能稳定后 | 形成社区飞轮 |
 | 正版源对接（哔哩哔哩漫画 / 快看 / 腾讯动漫） | 商业化前 | 转向"半合规阅读器"定位，铺平上架可能性 |
 | B 端：创作者后台 / 数据榜单 / CPS | 用户量 > 50000 | 真正的盈利天花板路径 |
