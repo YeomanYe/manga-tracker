@@ -1,5 +1,7 @@
+import type { Theme, ThemeTokens } from '@manga/types';
 import {
   type AsyncState,
+  BUILTIN_THEMES,
   BookshelfPage,
   DetailPage,
   OptionsPage,
@@ -8,8 +10,10 @@ import {
   SettingsPage,
   SyncBarExpanded,
   SyncBarFolded,
-  type Theme,
+  ThemePicker,
+  applyTheme,
   currentManga,
+  findTheme,
   mockMangas,
   mockRecent,
   mockSubscriptions,
@@ -17,16 +21,19 @@ import {
 import { useEffect, useState } from 'react';
 
 const STATES: AsyncState[] = ['normal', 'empty', 'loading', 'error'];
-const THEMES: Theme[] = ['dark', 'light'];
 
-type Focus = 'all' | 'sync-bar' | 'popup' | 'options' | 'mobile';
+type Focus = 'all' | 'sync-bar' | 'popup' | 'options' | 'mobile' | 'themes';
 const FOCUSES: { id: Focus; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'sync-bar', label: 'SyncBar' },
   { id: 'popup', label: 'Popup' },
   { id: 'options', label: 'Options' },
   { id: 'mobile', label: 'Mobile' },
+  { id: 'themes', label: 'Themes' },
 ];
+
+const STORAGE_KEY = 'preview.theme';
+const CUSTOMS_KEY = 'preview.customThemes';
 
 export function App() {
   const [state, setState] = useState<AsyncState>(getInitialQuery('state', STATES) ?? 'normal');
@@ -36,16 +43,35 @@ export function App() {
       FOCUSES.map((f) => f.id),
     ) ?? 'all',
   );
-  const [theme, setTheme] = useState<Theme>(getInitialTheme());
+  const [themeId, setThemeId] = useState<string>(
+    () => localStorage.getItem(STORAGE_KEY) ?? 'inkmono-dark',
+  );
+  const [customs, setCustoms] = useState<Theme[]>(() => loadCustoms());
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    const t = findTheme(themeId, customs) ?? (BUILTIN_THEMES[0] as Theme);
+    applyTheme(t);
+    localStorage.setItem(STORAGE_KEY, themeId);
+  }, [themeId, customs]);
 
   useEffect(() => {
     syncQuery({ state: state === 'normal' ? null : state, focus: focus === 'all' ? null : focus });
   }, [state, focus]);
+
+  const saveCustom = (name: string, tokens: ThemeTokens, mode: 'dark' | 'light') => {
+    const id = `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'theme'}-${Date.now().toString(36)}`;
+    const t: Theme = { id, name, mode, builtin: false, tokens };
+    const next = [...customs, t];
+    setCustoms(next);
+    localStorage.setItem(CUSTOMS_KEY, JSON.stringify(next));
+    setThemeId(id);
+  };
+  const removeCustom = (id: string) => {
+    const next = customs.filter((c) => c.id !== id);
+    setCustoms(next);
+    localStorage.setItem(CUSTOMS_KEY, JSON.stringify(next));
+    if (id === themeId) setThemeId('inkmono-dark');
+  };
 
   const filteredShelf = state === 'empty' ? [] : mockMangas;
   const show = (id: Focus) => focus === 'all' || focus === id;
@@ -84,18 +110,27 @@ export function App() {
             </button>
           ))}
         </span>
-        <span className="seg">
-          {THEMES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={t === theme ? 'cur' : ''}
-              onClick={() => setTheme(t)}
-            >
-              {t}
-            </button>
+        <span className="tag">Theme:</span>
+        <select
+          className="seg"
+          value={themeId}
+          onChange={(e) => setThemeId(e.target.value)}
+          style={{
+            background: 'var(--ink-bg-soft)',
+            color: 'var(--ink-text)',
+            border: '1px solid var(--ink-border)',
+            borderRadius: 6,
+            padding: '4px 8px',
+            fontSize: 12,
+            fontFamily: 'var(--ink-font-mono)',
+          }}
+        >
+          {[...BUILTIN_THEMES, ...customs].map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
           ))}
-        </span>
+        </select>
         <a href="../">← Design Doc</a>
       </div>
 
@@ -216,6 +251,26 @@ export function App() {
         </section>
       )}
 
+      {show('themes') && (
+        <section className="app-section">
+          <h2>
+            Themes <small>4 内置预设 + 用户自定义</small>
+          </h2>
+          <p className="desc">
+            扩展 Options 页和移动端 Settings 页都用这个 ThemePicker 组件。选定主题后所有
+            surface（包括注入到第三方站的 Sync Bar Shadow DOM）都跟着切。自定义保存到本地存储，与
+            IndexedDB / SQLite 同源。
+          </p>
+          <ThemePicker
+            current={themeId}
+            customs={customs}
+            onPick={setThemeId}
+            onSaveCustom={saveCustom}
+            onRemoveCustom={removeCustom}
+          />
+        </section>
+      )}
+
       <footer className="app-footer">
         <div>
           所有数据为虚构 mock。源标识 <code>example-1 ~ example-4</code> 占位，不指向真实漫画站。
@@ -265,10 +320,16 @@ function getInitialQuery<T extends string>(key: string, allow: readonly T[]): T 
   return allow.includes(raw as T) ? (raw as T) : null;
 }
 
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark';
-  const saved = localStorage.getItem('theme');
-  return THEMES.includes(saved as Theme) ? (saved as Theme) : 'dark';
+function loadCustoms(): Theme[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CUSTOMS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Theme[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 function syncQuery(updates: Record<string, string | null>) {

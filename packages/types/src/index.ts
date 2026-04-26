@@ -25,3 +25,10 @@ export {
   type Settings,
   defaultSettings,
 } from './settings';
+export {
+  themeTokensSchema,
+  type ThemeTokens,
+  themeSchema,
+  type Theme,
+  TOKEN_VAR_MAP,
+} from './theme';

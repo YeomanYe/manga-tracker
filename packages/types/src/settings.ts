@@ -9,7 +9,8 @@ export const syncBarPositionSchema = z.enum([
 export type SyncBarPosition = z.infer<typeof syncBarPositionSchema>;
 
 export const settingsSchema = z.object({
-  theme: z.enum(['dark', 'light']).default('dark'),
+  /** Theme id — one of the built-in presets or a user-defined custom theme. */
+  themeId: z.string().default('inkmono-dark'),
   syncBar: z.object({
     position: syncBarPositionSchema.default('bottom-right'),
     defaultFolded: z.boolean().default(true),
@@ -25,7 +26,7 @@ export const settingsSchema = z.object({
 export type Settings = z.infer<typeof settingsSchema>;
 
 export const defaultSettings: Settings = {
-  theme: 'dark',
+  themeId: 'inkmono-dark',
   syncBar: { position: 'bottom-right', defaultFolded: true, showToast: true },
   reader: { adBlock: true, mobileCss: true },
 };

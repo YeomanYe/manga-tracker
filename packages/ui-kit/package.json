@@ -9,6 +9,9 @@
     "./styles.css": "./src/styles.css",
     "./tokens.css": "./src/tokens/inkmono.css"
   },
+  "dependencies": {
+    "@manga/types": "workspace:*"
+  },
   "peerDependencies": {
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

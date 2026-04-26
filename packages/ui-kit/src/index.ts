@@ -16,3 +16,6 @@ export { BookshelfPage } from './mobile/BookshelfPage';
 export { DetailPage } from './mobile/DetailPage';
 export { ReaderShellPage } from './mobile/ReaderShellPage';
 export { SettingsPage } from './mobile/SettingsPage';
+
+export { BUILTIN_THEMES, findTheme, applyTheme, themeToCss } from './themes';
+export { ThemePicker } from './themes/ThemePicker';
