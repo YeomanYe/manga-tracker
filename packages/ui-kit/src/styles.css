@@ -46,6 +46,12 @@
   border-color: var(--ink-accent);
   font-weight: 700;
 }
+.uk-btn--accent:hover {
+  background: var(--ink-accent);
+  color: #1a1612;
+  border-color: var(--ink-accent);
+  filter: brightness(1.08);
+}
 .uk-btn--ghost {
   background: transparent;
 }
@@ -54,6 +60,12 @@
   border-color: var(--ink-good);
   background: var(--ink-good-soft);
   font-weight: 600;
+}
+.uk-btn--in:hover {
+  color: var(--ink-good);
+  border-color: var(--ink-good);
+  background: var(--ink-good-soft);
+  filter: brightness(1.15);
 }
 
 .uk-toggle {
@@ -202,6 +214,8 @@
   z-index: 1;
 }
 .uk-syncbar-expanded {
+  width: max-content;
+  max-width: 100%;
   height: 44px;
   padding: 0 12px 0 8px;
   background: var(--ink-bg-elev);
@@ -214,6 +228,7 @@
   font-size: 12.5px;
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
 }
 .uk-syncbar-expanded__cover {
   width: 28px;

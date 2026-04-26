@@ -116,7 +116,10 @@ export function App() {
             5% opacity 颗粒纹理。
           </p>
 
-          <div className="app-row" style={{ flexDirection: 'column', gap: 14 }}>
+          <div
+            className="app-row"
+            style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14 }}
+          >
             <SyncBarDemo
               label="折叠态（默认）· 状态点指示"
               child={<SyncBarFolded status="in-shelf" />}
