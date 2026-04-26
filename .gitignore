@@ -45,3 +45,7 @@ apps/mobile/android/keystore/
 # Source rules (用户运行时数据，不进 git)
 **/source-rules-cache/
 *.runtime.json
+
+.dev.vars*
+!.dev.vars.example
+!.env.example
