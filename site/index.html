@@ -420,7 +420,7 @@
 <pre><code>Application Tier
 ├── apps/extension       (Plasmo · popup / options / background / content scripts)
 ├── apps/mobile          (Capacitor · pages / reader-shell)
-└── apps/preview         (Vite · 仅消费 ui-kit，验证视觉与交互)
+└── preview              (Vite · 研发期 UI 调试工具，消费 ui-kit；与 apps/ packages/ 平级)
         │
         │  imports
         ▼
@@ -757,31 +757,33 @@ formats supported: legado-v3 | manga-tracker-v1 | mihon-port</code></pre>
   +- section: About        -&gt; version</code></pre>
 
 
-<h2 id="preview">Preview 站（真实组件）</h2>
+<h2 id="preview">Preview（研发期 UI 调试工具）</h2>
 
-<p>用 <code>@manga/ui-kit</code> 中的<strong>真实 React 组件</strong>渲染所有 4 类宿主（Sync Bar / Popup / Options / 移动端 4 屏）。这些组件以后会被 <code>apps/extension</code>（Plasmo）和 <code>apps/mobile</code>（Capacitor）直接 import，preview / extension / mobile 三端共享同一份组件实现，永不漂移。</p>
+<p><code>preview/</code> 是开发期的 React playground，<strong>不是营销面或风格展示页</strong>。直接 import <code>@manga/ui-kit</code> 的真实组件——你改一个组件，extension / mobile / preview 三端同时刷新；写新组件时先在 preview 里调通边界情况（长标题、空数据、错误态、暗/亮主题），再装到扩展和 app 里跑真实环境验证。</p>
 
 <table>
   <thead><tr><th>项</th><th>说明</th></tr></thead>
   <tbody>
-    <tr><td>实现</td><td>Vite + React + 真实 React 组件（不是手写 HTML mockup）</td></tr>
-    <tr><td>源码</td><td><code>apps/preview/</code>（Vite app） + <code>packages/ui-kit/</code>（共享组件）</td></tr>
-    <tr><td>本地运行</td><td><code>pnpm install &amp;&amp; pnpm dev:preview</code> → <code>http://localhost:5174</code></td></tr>
-    <tr><td>构建</td><td><code>pnpm build:site</code> → <code>dist/</code> = 设计文档 + <code>dist/preview/</code> 子路径</td></tr>
-    <tr><td>访问（部署后）</td><td><code>https://manga-tracker.pages.dev/preview/</code></td></tr>
-    <tr><td>状态切换</td><td>顶部 toolbar 按钮组 + URL query (<code>?state=empty|loading|error</code>)</td></tr>
-    <tr><td>主题</td><td>Dark / Light 切换，保存到 localStorage</td></tr>
-    <tr><td>Mock 数据</td><td>来自 <code>@manga/ui-kit/src/mocks/data.ts</code>：12 部虚构作品 + 7 条最近阅读 + 3 个 wire-format 订阅样本</td></tr>
-    <tr><td>合规</td><td>所有源标识 <code>example-1 ~ example-4</code>，URL <code>example.com</code> 占位；不指向任何真实漫画站</td></tr>
+    <tr><td>定位</td><td>研发期 UI 调试工具（不是 mockup，不是营销页）</td></tr>
+    <tr><td>位置</td><td><code>preview/</code>（项目根目录，与 <code>apps/</code> / <code>packages/</code> 平级）</td></tr>
+    <tr><td>实现</td><td>Vite + React，import <code>@manga/ui-kit</code></td></tr>
+    <tr><td>本地运行</td><td><code>pnpm install &amp;&amp; pnpm preview</code> → <code>http://localhost:5174</code>（研发期主要使用方式）</td></tr>
+    <tr><td>构建（可选）</td><td><code>pnpm build:site</code> 把 preview 一起带进 <code>dist/preview/</code>，可发链接给朋友远程评审</td></tr>
+    <tr><td>Focus 控件</td><td>顶部 toolbar 切换：<code>All / SyncBar / Popup / Options / Mobile</code>，聚焦单组件调试</td></tr>
+    <tr><td>State 控件</td><td><code>normal / empty / loading / error</code> 切边界情况</td></tr>
+    <tr><td>Theme 控件</td><td>Dark / Light（保存到 localStorage）</td></tr>
+    <tr><td>URL 共享</td><td><code>?focus=sync-bar&amp;state=empty</code> 一键定位到具体场景，方便贴 issue / 截图沟通</td></tr>
+    <tr><td>Mock 数据</td><td><code>@manga/ui-kit/src/mocks/data.ts</code>：12 部虚构作品 + 7 条最近阅读 + 3 个 wire-format 订阅样本</td></tr>
+    <tr><td>合规</td><td>所有源标识 <code>example-1 ~ example-4</code>，URL <code>example.com</code> 占位</td></tr>
   </tbody>
 </table>
 
 <div class="callout">
-  <strong>preview 与生产组件零漂移</strong>：preview 不写自己的视觉实现。如果一个组件在 preview 里看起来对，那它在 extension / mobile 里也对——因为是同一份 React 代码。
+  <strong>preview ↔ 生产组件零漂移</strong>：preview 不复写视觉。组件在 preview 里看着对，extension / mobile 里就对——同一份 React 代码。
 </div>
 
 <div class="callout warn">
-  Preview 站只覆盖 UI 走查，<strong>不替代真实环境验证</strong>：扩展真实注入、WebView 真实抓取、源规则真实匹配仍需在真实漫画站测试（这部分 mock 不出价值）。
+  Preview 只负责 UI 调试，<strong>不替代真实环境验证</strong>：扩展真实注入、WebView 真实抓取、源规则真实匹配仍需在真实漫画站测试。
 </div>
 
 <h2 id="stack">技术栈</h2>

@@ -164,7 +164,7 @@ V1 默认行为：**用户从 legado 社区导入已有的漫画书源 URL** →
   - 移动端 app 在 Capacitor 内 vs 浏览器内的视觉差异（safe-area、滚动行为）需要分别走查
   - **多状态 mock**（空 / loading / error / 不同规模书架）在真实环境里很难凑齐
   - 项目还涉及"扩展端 + 移动端 + Options 页"三类宿主，独立 preview 站可以一屏看齐对比
-- **Surface**：`apps/preview/` —— **真正的 Vite + React 应用**，消费 `packages/ui-kit/` 中的真实 React 组件（与扩展、移动端 app 共用同一份组件）。构建产物部署在 Cloudflare Pages 的 `/preview` 子路径下
+- **Surface**：`preview/`（项目根目录，与 `apps/` / `packages/` 平级）—— **研发期 UI 调试工具**：Vite + React app，消费 `packages/ui-kit/` 中的真实组件。研发期主要用 `pnpm preview` 跑 dev server 在本地用；可选构建到 `/preview` 子路径供远程评审
 - **Functional coverage**：
   - Sync Bar 在"模拟漫画站"背景下的折叠 / 展开 / 已在书架 / 进度更新 toast 四态
   - Popup 360×500 三 Tab（当前 / 书架 / 最近）

@@ -10,6 +10,7 @@ out/
 *.tsbuildinfo
 apps/*/dist/
 packages/*/dist/
+preview/dist/
 
 # Environment
 .env

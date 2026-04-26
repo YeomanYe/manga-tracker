@@ -9,9 +9,9 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev:preview": "pnpm --filter @manga/preview dev",
-    "build:preview": "pnpm --filter @manga/preview build",
-    "build:site": "pnpm build:preview && node scripts/build-dist.mjs",
+    "preview": "pnpm --filter @manga/preview dev",
+    "preview:build": "pnpm --filter @manga/preview build",
+    "build:site": "pnpm preview:build && node scripts/build-dist.mjs",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "test": "echo \"(no tests yet)\""

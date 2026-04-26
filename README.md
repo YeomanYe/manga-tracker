@@ -25,7 +25,7 @@
 - **扩展（Plasmo 0.89+）**：跨浏览器 manifest + React 18 + Dexie.js
 - **移动端（Capacitor 6 + Android）**：React 18 + Vite + capacitor-community/sqlite
 - **UI 共享层（@manga/ui-kit）**：React 18 + plain CSS tokens（Inkmono），三端共享，零漂移
-- **Preview 应用（apps/preview/）**：Vite 5 + React 18，import @manga/ui-kit 真实组件
+- **Preview（preview/，研发期调试工具）**：Vite 5 + React 18，import @manga/ui-kit 真实组件
 - **源规则兼容**：legado 漫画书源（V1 主力）+ 自有 v1 格式 + mihon-port（V2）
 - 共享：Zustand、Zod
 
@@ -36,7 +36,6 @@
 ```
 manga-tracker/
 ├── apps/
-│   ├── preview/                # Vite + React 预览站（消费 ui-kit）
 │   ├── extension/              # 浏览器扩展（Plasmo · TBD）
 │   └── mobile/                 # Android app（Capacitor · TBD）
 ├── packages/
@@ -45,18 +44,13 @@ manga-tracker/
 │   ├── source-rules/           # 源站规则 schema + loader (TBD)
 │   ├── injector/               # content script 抽象 (TBD)
 │   └── storage-adapter/        # 本地存储抽象 (TBD)
-├── docs/                       # 工程规范（已落地）
-│   ├── 01-project-prep.md
-│   ├── architecture/
-│   ├── coding/
-│   ├── ui/
-│   ├── testing/
-│   └── ai-guide/
-├── site/                       # 静态设计文档（部署到 Cloudflare Pages）
-│   ├── index.html
-│   └── _headers
+├── preview/                    # 研发期 UI 调试工具（Vite + React）
+│                               #   import @manga/ui-kit 的真实组件
+│                               #   带状态/主题/聚焦切换控件
+├── docs/                       # 工程规范
+├── site/                       # 静态设计文档
 ├── scripts/
-│   └── build-dist.mjs          # 合并 site/ + apps/preview/dist 到 dist/
+│   └── build-dist.mjs          # 合并 site/ + preview/dist 到 dist/
 ├── wrangler.toml               # Cloudflare Pages 配置
 ├── package.json                # workspace root
 ├── pnpm-workspace.yaml
@@ -69,21 +63,37 @@ manga-tracker/
 ```bash
 pnpm install                # 首次安装
 
-pnpm dev:preview            # Preview 站 dev server (http://localhost:5174)
-pnpm build:preview          # 构建 preview 应用
-pnpm build:site             # 构建并合并到 dist/（CF Pages 用）
+pnpm preview                # Preview dev server (http://localhost:5174) — 研发期主用
+pnpm preview:build          # 构建 preview
+pnpm build:site             # 构建 preview + 合并到 dist/（CF Pages 用）
 
 pnpm check                  # Biome lint + format 检查
 pnpm check:fix              # 自动修复
 ```
 
-## 设计文档与 Preview
+## Preview（研发期 UI 调试工具）
 
-- **设计文档**：本地 `python3 -m http.server 8000 -d site` → http://localhost:8000；线上 https://manga-tracker.pages.dev
-- **Preview 站**：本地 `pnpm dev:preview` → http://localhost:5174；线上 https://manga-tracker.pages.dev/preview/
-  - 真实 React 组件（来自 `@manga/ui-kit`），不是手写 mockup
-  - 状态切换：URL query `?state=empty|loading|error`
-  - 主题切换：Dark / Light（保存到 localStorage）
+`preview/` 是开发期的 React playground。直接 import `@manga/ui-kit` 的真实组件——你改一个组件，extension / mobile / preview 三端同时刷新。
+
+**使用场景**：
+- 开新组件时先在 preview 里验证视觉和交互（不必先跑扩展或装 APK）
+- 调试边界情况：长标题、空数据、加载错误、不同主题
+- 远程评审：发链接给朋友看进度
+- 截图沟通：状态切换全靠 URL，截图能定位到具体场景
+
+**操作**：
+- 顶部 toolbar：`Focus`（聚焦单组件 / 全部）、`State`（normal/empty/loading/error）、`Theme`（dark/light）
+- URL query 全程同步：`?focus=sync-bar&state=empty` 直达
+- localStorage 记住主题选择
+
+```bash
+pnpm preview     # → http://localhost:5174
+```
+
+## 设计文档站
+
+- 本地：`python3 -m http.server 8000 -d site` → http://localhost:8000
+- 线上：你的 Cloudflare Pages 项目地址（在 CF dashboard 看，通常是 `<project>.pages.dev`）
 
 ## 部署（Cloudflare Pages）
 

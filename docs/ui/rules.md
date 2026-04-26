@@ -1,6 +1,6 @@
 # UI Rules
 
-> v1 选定 **Candidate B · Inkmono**。视觉语言落地在 `packages/ui-kit/src/tokens/inkmono.css`，组件实现在 `packages/ui-kit/src/`。Preview 站（`apps/preview/`）用同一份组件，所见即所得。
+> v1 选定 **Candidate B · Inkmono**。视觉语言落地在 `packages/ui-kit/src/tokens/inkmono.css`，组件实现在 `packages/ui-kit/src/`。研发期 UI 调试工具 `preview/` 用同一份组件，所见即所得。
 
 ## 视觉语言（Inkmono · 暗色为主调 + 漫画印刷质感）
 
