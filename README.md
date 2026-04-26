@@ -48,17 +48,27 @@ manga-tracker/
 │   ├── testing/
 │   └── ai-guide/
 └── site/                   # 设计文档站（部署到 Cloudflare Pages）
-    ├── index.html
+    ├── index.html          # 主设计文档
+    ├── preview/
+    │   └── index.html      # UI Preview（Tooling Mono 默认风格）
     ├── _headers
     └── wrangler.toml
 ```
 
 ## 设计文档
 
-完整设计文档（流程 / 架构 / 模块 / UI 候选 / 部署）：
+完整设计文档（流程 / 架构 / 模块 / UI 候选 / ASCII 线框 / 部署）：
 
-- 本地预览：`cd site && python3 -m http.server 8000` → http://localhost:8000
+- 本地：`cd site && python3 -m http.server 8000` → http://localhost:8000
 - 在线（部署后）：https://manga-tracker.pages.dev
+
+## Preview 站（UI 走查）
+
+用 **Tooling Mono**（v1 默认风格）实现的 UI 预览，覆盖 Sync Bar / Popup / Options / 移动端 4 类宿主，带状态切换（normal / empty / loading / error）：
+
+- 本地：上面命令启动后访问 http://localhost:8000/preview/
+- 在线：https://manga-tracker.pages.dev/preview/
+- URL query：`?state=empty` 等可直接定位到状态
 
 ## 部署
 

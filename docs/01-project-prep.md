@@ -157,18 +157,33 @@ V1 默认行为：**用户从 legado 社区导入已有的漫画书源 URL** →
 
 ## Preview Decision
 
-- **Status: Not needed**
+- **Status: Required**（已修订）
 - **Why**：
-  扩展和 app 的 UI 层都是 React + Vite，`vite dev` 本身就是持续可迭代的 preview——改代码刷新即可看到效果。再叠一层 mock shell 是重复造轮子。
-  - 扩展 popup / options 在 dev server 当普通 web 页直接走查
-  - 移动 app 的 React UI 用 Capacitor live-reload，浏览器和真机都能即时刷新
-  - 唯一不能 preview 的是 content script 真实注入、WebView 真实抓取、源规则真实匹配——这部分本来就要在真实站点跑，mock 不出价值
-- **Surface**: N/A（dev server 即 preview）
-- **Data strategy**: N/A（开发期用本地 fixture JSON 灌入 IndexedDB / SQLite，跑真实存储链路）
+  虽然扩展和 app 的 UI 都是 React + Vite，`vite dev` 能跑，但本项目有几个特殊性使独立 preview 站有价值：
+  - 扩展 Sync Bar **嵌在第三方漫画站页面**里——`vite dev` 单独打开看不到"被注入到原站"的真实视觉，需要独立壳模拟"原站背景 + 注入 Sync Bar"
+  - 移动端 app 在 Capacitor 内 vs 浏览器内的视觉差异（safe-area、滚动行为）需要分别走查
+  - **多状态 mock**（空 / loading / error / 不同规模书架）在真实环境里很难凑齐
+  - 项目还涉及"扩展端 + 移动端 + Options 页"三类宿主，独立 preview 站可以一屏看齐对比
+- **Surface**：单文件 HTML 静态预览站，部署在 Cloudflare Pages 的 `/preview` 子路径下（与设计文档同仓库）
+- **Functional coverage**：
+  - Sync Bar 在"模拟漫画站"背景下的折叠 / 展开 / 已在书架 / 进度更新 toast 四态
+  - Popup 360×500 三 Tab（当前 / 书架 / 最近）
+  - Options 全屏页（书架管理 + 源订阅）
+  - 移动端：书架 / 详情 / 阅读器外壳 / 设置 四屏并排
+- **Data strategy**：硬编码 12-15 个虚构作品（覆盖长标题、不同进度、缺失封面、完结 / 连载、多个虚构源标识——全部 example.com，不指向真实漫画站）；状态切换用 URL query (`?state=empty|loading|error`) 或顶部 toolbar 控件
+- **Layout & pagination plan**：单页纵向滚动，按"surface"分块（Sync Bar 块 → Popup 块 → Options 块 → 移动端块），每块标注"对应文档章节"
+- **Mock data richness**：
+  - 12+ 部作品，覆盖长 / 短标题、CJK 全角、英文夹杂、副标题、特殊字符
+  - 进度分布：刚开始（ch.1）/ 中段（ch.50+）/ 接近完结 / 已完结
+  - 至少 4 个虚构源标识 ID，分布不均匀（验证排序与分组）
+  - 时间戳分布：今天 / 昨天 / 上周 / 上月 / 去年（验证"最近阅读"排序）
+- **State controller**：顶部 toolbar 固定按钮组：`Normal | Empty | Loading | Error` + `Dark | Light`；URL query 同步保存
 - **Validation sequence**：
-  1. UI 走查：`vite dev` 浏览器打开 popup / app 主入口
-  2. 扩展真实验证：unpacked load → 在目标漫画站测试识别和追踪
-  3. App 真实验证：构建 debug APK → 装自己手机 → 跑完整流程
+  1. **第一阶段**：开 preview 站做 UI 走查，验证布局密度、状态切换、暗色对比度
+  2. **第二阶段**：扩展 unpacked load → 在目标漫画站测试识别和追踪（真实环境）
+  3. **第三阶段**：构建 debug APK → 装自己手机 → 跑完整流程（真实环境）
+
+> 选定 UI 候选 **A · Tooling Mono** 作为 v1 默认（单人维护成本最低、信息密度最高）。Preview 站用 A 风格实现；B / C 仅在设计文档里以 ASCII 对比保留，不做完整 preview。
 
 ## Open Decisions
 
