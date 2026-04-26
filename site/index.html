@@ -889,13 +889,17 @@ formats supported: legado-v3 | manga-tracker-v1 | mihon-port</code></pre>
   <li>Settings → Build → Build configuration：
     <ul>
       <li>Build command: <code>pnpm install --frozen-lockfile=false &amp;&amp; pnpm build:site</code></li>
-      <li>Deploy command: <code>npx wrangler deploy</code>（默认即可）</li>
-      <li><strong>Path: <code>dist</code></strong>（关键！让 wrangler 从 <code>dist/</code> 跑，避开 workspace 根检测）</li>
+      <li><strong>Deploy command: <code>cd dist &amp;&amp; npx wrangler deploy</code></strong>（关键！cd 进 dist 再 deploy，wrangler v4 从 <code>dist/</code> 跑，避开对 workspace 根的检测）</li>
+      <li>Path: <code>/</code>（保持默认；如果之前改过务必改回来 —— Path 是 build 的 cwd，<code>dist/</code> 在 clone 时还不存在）</li>
     </ul>
   </li>
-  <li>build:site 已经把 <code>wrangler.toml</code> 写进 <code>dist/</code>（<code>name</code> + <code>compatibility_date</code> + <code>[assets] directory = "."</code>），wrangler v4 从 <code>dist/</code> 跑就能找到它，部署成功</li>
+  <li>build:site 已经把 <code>wrangler.toml</code> 写进 <code>dist/</code>（<code>name</code> + <code>compatibility_date</code> + <code>[assets] directory = "."</code>），<code>cd dist</code> 后 wrangler 就能找到它</li>
   <li>部署后 URL 是 <code>manga-tracker.&lt;your-account&gt;.workers.dev</code>（不是 <code>*.pages.dev</code>）</li>
 </ol>
+
+<div class="callout warn">
+  <strong>常见踩坑</strong>：直接把 <strong>Path</strong> 设成 <code>dist</code> 会报 "root directory not found" —— 因为 Path 是整个 build 的 cwd，clone 完了才 build，<code>dist/</code> 还没存在。正确做法是 Path 留 <code>/</code>，仅在 Deploy command 前面加 <code>cd dist &amp;&amp;</code>。
+</div>
 
 <h3>本地预览</h3>
 <pre><code># 安装依赖（首次）
