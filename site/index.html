@@ -861,53 +861,63 @@ formats supported: legado-v3 | manga-tracker-v1 | mihon-port</code></pre>
 
 <h2 id="deploy">Cloudflare 部署</h2>
 
-<p>本设计文档站（<code>site/</code>）部署到 <strong>Cloudflare Pages</strong>，从 GitHub 仓库自动构建。配置在 <code>site/wrangler.toml</code> 和 <code>site/_headers</code>。</p>
+<p>本设计文档站（<code>site/</code>）+ Preview 站（<code>preview/</code>）合并到 <code>dist/</code>，部署到 Cloudflare。<strong>有两种产品可选</strong>，下面分别说明。</p>
 
-<h3>一次性配置</h3>
+<div class="callout">
+  <strong>Pages vs Workers 怎么选？</strong> 我们这是纯静态站（HTML + CSS + JS，无服务端逻辑）—— <strong>推荐 Pages</strong>，配置最简单。已经设成 Workers 也能跑，但需要多一份 <code>wrangler.toml</code>。
+</div>
+
+<h3>方案 A · Cloudflare Pages（推荐）</h3>
 <ol>
-  <li>把项目推到 GitHub：
-    <pre><code>cd /Users/falcom/Documents/projects/manga-tracker
-git init -b main
-git remote add origin git@github.com:YeomanYe/manga-tracker.git
-git add .
-git commit -m "chore(repo): initial design + scaffolding"
-git push -u origin main</code></pre>
-  </li>
-  <li>登录 <a href="https://dash.cloudflare.com/?to=/:account/pages">Cloudflare Pages 控制台</a></li>
-  <li>点 <strong>Create a project → Connect to Git</strong>，选 <code>YeomanYe/manga-tracker</code></li>
-  <li>构建配置（全部在 CF Pages Dashboard 设置，**不要在仓库放 <code>wrangler.toml</code>**——wrangler v4 在 pnpm workspace 根部署会报错"<em>Wrangler application detection logic has been run in the root of a workspace</em>"，删掉就好）：
+  <li>登录 <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages">CF dashboard → Workers &amp; Pages</a> → 切到 <strong>Pages</strong> Tab</li>
+  <li><strong>Create a project → Connect to Git</strong>，选 <code>YeomanYe/manga-tracker</code></li>
+  <li>构建配置：
     <ul>
       <li>Framework preset: <code>None</code></li>
       <li>Build command: <code>pnpm install --frozen-lockfile=false &amp;&amp; pnpm build:site</code></li>
       <li>Build output directory: <code>dist</code></li>
-      <li>Root directory: <code>/</code></li>
       <li>Environment variables: <code>NODE_VERSION=20</code></li>
     </ul>
   </li>
-  <li>点 Deploy。Pages 会给你一个 <code>manga-tracker.pages.dev</code> 域名，每次 push 到 main 自动部署</li>
+  <li>Deploy。Pages 会给一个 <code>&lt;name&gt;.pages.dev</code> 域名（如果 <code>manga-tracker.pages.dev</code> 已被别人占，会自动加后缀）</li>
 </ol>
+<p><strong>注意</strong>：Pages 不要在仓库里放 <code>wrangler.toml</code>——wrangler v4 在 pnpm workspace 根部署会报错。我们的 build 脚本只把 <code>wrangler.toml</code> 写进 <code>dist/</code>，仓库根没有，Pages 不会触发 wrangler 部署。</p>
 
-<h3>自定义域名（可选）</h3>
-<p>如果你要绑自己的域名（比如 <code>docs.yourbrand.com</code>），在 Pages 项目的 <strong>Custom domains</strong> 里添加，按提示加 CNAME 记录到你的 DNS（推荐用 Cloudflare DNS，全自动）。</p>
-
-<h3>预览部署（PR 自动）</h3>
-<p>Pages 默认会为每个 PR 自动起一个 preview 部署，URL 形如 <code>&lt;commit-sha&gt;.manga-tracker.pages.dev</code>。一个人开发时这个特性也很有用：可以在合并前先看新版长什么样。</p>
+<h3>方案 B · Cloudflare Workers Builds</h3>
+<p>如果已经把项目建成了 Worker 服务（URL 是 <code>workers/services/...</code>），保留 Worker 也可以，需要：</p>
+<ol>
+  <li>Settings → Build → Build configuration：
+    <ul>
+      <li>Build command: <code>pnpm install --frozen-lockfile=false &amp;&amp; pnpm build:site</code></li>
+      <li>Deploy command: <code>npx wrangler deploy</code>（默认即可）</li>
+      <li><strong>Path: <code>dist</code></strong>（关键！让 wrangler 从 <code>dist/</code> 跑，避开 workspace 根检测）</li>
+    </ul>
+  </li>
+  <li>build:site 已经把 <code>wrangler.toml</code> 写进 <code>dist/</code>（<code>name</code> + <code>compatibility_date</code> + <code>[assets] directory = "."</code>），wrangler v4 从 <code>dist/</code> 跑就能找到它，部署成功</li>
+  <li>部署后 URL 是 <code>manga-tracker.&lt;your-account&gt;.workers.dev</code>（不是 <code>*.pages.dev</code>）</li>
+</ol>
 
 <h3>本地预览</h3>
 <pre><code># 安装依赖（首次）
 pnpm install
 
 # 设计文档（静态 HTML）
-cd site && python3 -m http.server 8000
+cd site &amp;&amp; python3 -m http.server 8000
 # → http://localhost:8000
 
 # Preview 站（Vite dev server）
-pnpm dev:preview
+pnpm preview
 # → http://localhost:5174
 
-# 完整构建（CF Pages 一致）
+# 完整构建（与 CF 一致）
 pnpm build:site
-# → 输出在 dist/ 下，dist/index.html 是设计文档，dist/preview/ 是 preview 应用</code></pre>
+# → 输出在 dist/ 下，含 index.html / preview/ / wrangler.toml</code></pre>
+
+<h3>自定义域名（可选）</h3>
+<p>绑自己的域名（如 <code>docs.yourbrand.com</code>）：Pages 项目的 <strong>Custom domains</strong> 或 Worker 的 <strong>Domains &amp; Routes</strong> 里添加，按提示加 CNAME 记录。推荐用 Cloudflare DNS，全自动。</p>
+
+<h3>预览部署（PR 自动）</h3>
+<p>Pages 默认会为每个 PR 起一个 preview 部署，URL 形如 <code>&lt;commit-sha&gt;.&lt;project&gt;.pages.dev</code>。Workers Builds 也支持类似的 non-production 部署。</p>
 
 <h2 id="decisions">开放决策</h2>
 
