@@ -1,0 +1,19 @@
+{
+  "name": "@manga/stores",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@manga/source-rules": "workspace:*",
+    "@manga/storage-adapter": "workspace:*",
+    "@manga/types": "workspace:*",
+    "mobx": "^6.13.5",
+    "mobx-react-lite": "^4.0.7"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0"
+  }
+}

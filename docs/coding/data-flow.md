@@ -6,7 +6,7 @@
 UI 组件
    │  read/write
    ▼
-Zustand store（内存状态）
+MobX store（内存状态）
    │  persist
    ▼
 @manga/storage-adapter

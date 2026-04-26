@@ -1,0 +1,18 @@
+{
+  "name": "@manga/injector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@manga/source-rules": "workspace:*",
+    "@manga/types": "workspace:*",
+    "@manga/ui-kit": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  }
+}

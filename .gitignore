@@ -12,6 +12,15 @@ apps/*/dist/
 packages/*/dist/
 preview/dist/
 
+# Plasmo (extension framework caches)
+.plasmo/
+apps/extension/build/
+
+# Capacitor native projects (regenerated)
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/local.properties
+
 # Environment
 .env
 .env.local

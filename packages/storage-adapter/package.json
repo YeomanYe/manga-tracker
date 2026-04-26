@@ -1,0 +1,15 @@
+{
+  "name": "@manga/storage-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./indexeddb": "./src/indexeddb/index.ts",
+    "./sqlite": "./src/sqlite/index.ts"
+  },
+  "dependencies": {
+    "@manga/types": "workspace:*",
+    "dexie": "^4.0.10"
+  }
+}

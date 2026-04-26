@@ -459,7 +459,7 @@ Persistence Tier (本地)
 │   │   ├── contents/
 │   │   │   └── sync-bar.tsx    # Sync Bar 注入（Plasmo CSUI 挂载点 + @manga/injector 渲染）
 │   │   └── src/
-│   │       ├── stores/         # Zustand stores
+│   │       ├── stores/         # MobX stores
 │   │       ├── lib/            # 消息桥 / storage 桥（仅扩展用）
 │   │       └── ui/             # 跨入口共享组件
 │   └── mobile/                 # Capacitor Android app
@@ -539,7 +539,7 @@ export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
 <pre><code>UI Component (React)
         │  read / write action
         ▼
-Zustand Store (in-memory)
+MobX Store (in-memory)
         │  persist on every write
         ▼
 @manga/storage-adapter (interface)
@@ -799,7 +799,7 @@ formats supported: legado-v3 | manga-tracker-v1 | mihon-port</code></pre>
     <tr><td>移动端容器</td><td>Capacitor 6.x</td><td>React 代码与扩展共享率最高（vs RN/Flutter）</td></tr>
     <tr><td>UI 共享层</td><td><strong>@manga/ui-kit</strong>（React 18 + plain CSS tokens）</td><td>Inkmono 视觉语言（Candidate B）；preview / extension / mobile 三端共享同一份组件，零漂移</td></tr>
     <tr><td>Preview 应用</td><td>Vite 5 + React 18</td><td>消费 ui-kit，提供状态切换和走查面，部署到 <code>/preview</code> 子路径</td></tr>
-    <tr><td>状态</td><td>Zustand</td><td>轻量，跨端 store 代码可部分共享</td></tr>
+    <tr><td>状态</td><td>MobX</td><td>轻量，跨端 store 代码可部分共享</td></tr>
     <tr><td>Schema</td><td>Zod</td><td>边界校验（用户导入数据 / 源规则）</td></tr>
     <tr><td>本地存储（扩展）</td><td>Dexie.js (IndexedDB)</td><td>避免裸 IDB API</td></tr>
     <tr><td>本地存储（mobile）</td><td>@capacitor-community/sqlite</td><td>带加密支持</td></tr>
@@ -931,7 +931,7 @@ pnpm build:site
   <thead><tr><th>编号</th><th>决策</th><th>当前默认</th><th>状态</th></tr></thead>
   <tbody>
     <tr><td>D1</td><td>移动端框架</td><td>Capacitor</td><td><span class="pill good">已确认</span></td></tr>
-    <tr><td>D2</td><td>状态管理</td><td>Zustand</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D2</td><td>状态管理</td><td>MobX</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D3</td><td>首批适配 3-5 个中文漫画站</td><td>动漫之家 &gt; 漫画柜 &gt; 拷贝漫画 &gt; 看漫画 &gt; 哔咔（按优先级）</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D4</td><td>导入导出格式</td><td>JSON</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D5</td><td>同 WiFi 局域网双端同步</td><td>v1 不做</td><td><span class="pill good">已确认</span></td></tr>

@@ -120,7 +120,7 @@
 - Plasmo CSUI 仅作"挂载点"，UI 渲染逻辑仍由 `@manga/injector` 提供（保持注入逻辑跨端复用）
 - Plasmo Storage / Messaging API **仅在 `apps/extension` 内部使用**，不污染 `packages/*`
 - Dexie.js（IndexedDB，作为 storage-adapter 的扩展端实现）
-- Zustand（状态管理）
+- MobX（状态管理）
 
 ### 移动端 App（`apps/mobile`）
 
@@ -128,7 +128,7 @@
 - React 18 + Vite 5（同栈）
 - Tailwind CSS 4.x
 - `@capacitor-community/sqlite`（带加密支持）
-- Zustand（store 代码部分跨端复用）
+- MobX（store 代码部分跨端复用）
 - Capacitor Browser 插件 / 自定义 WebView 包装（注入 content script）
 
 ### 共享 packages
@@ -189,7 +189,7 @@ V1 默认行为：**用户从 legado 社区导入已有的漫画书源 URL** →
 
 1. **首批适配站点清单（3-5 个）**：候选 动漫之家 / 漫画柜 / 拷贝漫画 / 看漫画 / 哔咔。每个站反爬/CDN/章节结构难度不同，需评估优先级。
 2. **Capacitor vs RN 终选**：本简报推荐 Capacitor（代码共享率最高、单人维护成本最低），RN 性能略好但跨端共享差。
-3. **Zustand vs Jotai**：建议 Zustand（更主流、API 更简单）。
+3. **MobX object 模式 vs decorator 模式**：建议 MobX 6 · object 模式（与 unimail 项目一致）。
 4. **导入导出格式**：JSON 是否够（人可读、便于 git 备份）？还是要二进制压缩？
 5. **同 WiFi 局域网双端互通**：第一阶段建议不做，等云同步前可以考虑。
 6. **首批源规则来源（已修订）**：直接 import legado（阅读）社区已有的中文漫画书源 → loader 转换为内部模型。原"自己写 5 个"路径降级为兜底（针对 legado 没覆盖的站点）。开发量从 5 周缩到 1-2 周。

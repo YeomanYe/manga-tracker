@@ -13,7 +13,7 @@ apps/extension/
 ├── contents/                 # Content Scripts（Plasmo 约定）
 │   └── sync-bar.tsx          # Sync Bar 注入入口（用 Plasmo CSUI 挂载点 + @manga/injector 渲染）
 ├── src/
-│   ├── stores/               # Zustand stores（仅扩展用）
+│   ├── stores/               # MobX stores（仅扩展用）
 │   ├── lib/                  # 仅扩展用的工具：消息桥（webextension-polyfill）、storage 桥
 │   └── ui/                   # 跨入口共享的 React 组件
 └── assets/                   # 图标、静态资源

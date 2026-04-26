@@ -12,8 +12,13 @@
     "preview": "pnpm --filter @manga/preview dev",
     "preview:build": "pnpm --filter @manga/preview build",
     "build:site": "pnpm preview:build && node scripts/build-dist.mjs",
+    "ext:dev": "pnpm --filter @manga/extension dev",
+    "ext:build": "pnpm --filter @manga/extension build",
+    "mobile:dev": "pnpm --filter @manga/mobile dev",
+    "mobile:build": "pnpm --filter @manga/mobile build",
     "check": "biome check .",
     "check:fix": "biome check --write .",
+    "typecheck": "tsc -b --noEmit packages/types packages/source-rules packages/storage-adapter packages/stores packages/injector packages/ui-kit preview apps/mobile apps/extension || true",
     "test": "echo \"(no tests yet)\""
   },
   "devDependencies": {

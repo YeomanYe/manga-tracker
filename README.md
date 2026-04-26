@@ -27,7 +27,7 @@
 - **UI 共享层（@manga/ui-kit）**：React 18 + plain CSS tokens（Inkmono），三端共享，零漂移
 - **Preview（preview/，研发期调试工具）**：Vite 5 + React 18，import @manga/ui-kit 真实组件
 - **源规则兼容**：legado 漫画书源（V1 主力）+ 自有 v1 格式 + mihon-port（V2）
-- 共享：Zustand、Zod
+- 共享：MobX、Zod
 
 详见 [`docs/01-project-prep.md`](./docs/01-project-prep.md)。
 

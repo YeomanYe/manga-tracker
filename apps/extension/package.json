@@ -1,0 +1,37 @@
+{
+  "name": "@manga/extension",
+  "version": "0.1.0",
+  "private": true,
+  "displayName": "manga-tracker",
+  "description": "中文漫画追踪 + 换源工具",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "@manga/injector": "workspace:*",
+    "@manga/source-rules": "workspace:*",
+    "@manga/storage-adapter": "workspace:*",
+    "@manga/stores": "workspace:*",
+    "@manga/types": "workspace:*",
+    "@manga/ui-kit": "workspace:*",
+    "mobx": "^6.13.5",
+    "mobx-react-lite": "^4.0.7",
+    "plasmo": "^0.90.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "webextension-polyfill": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.281",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/webextension-polyfill": "^0.12.1",
+    "typescript": "5.6.3"
+  },
+  "manifest": {
+    "host_permissions": ["<all_urls>"],
+    "permissions": ["storage", "scripting"]
+  }
+}

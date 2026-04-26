@@ -1,0 +1,13 @@
+{
+  "name": "@manga/source-rules",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@manga/types": "workspace:*",
+    "zod": "^3.23.8"
+  }
+}

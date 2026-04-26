@@ -34,7 +34,7 @@
 | 常量 | UPPER_SNAKE | `MAX_BOOKSHELF_ITEMS` |
 | 函数 / 变量 | camelCase | `parseChapter`, `isOnMangaPage` |
 | React hook | `useXxx` | `useBookshelf` |
-| Zustand store | `useXxxStore` | `useBookshelfStore` |
+| MobX store | `useXxxStore` | `useBookshelfStore` |
 | 事件 / action | 动词开头 | `addToBookshelf` |
 
 ## 包入口
