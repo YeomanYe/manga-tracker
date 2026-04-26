@@ -341,98 +341,103 @@
 
 <h2 id="flows">主要流程</h2>
 
+<p style="color:var(--text-mute);font-size:13px;font-style:italic;">以下流程为纯交互原型（不含具体视觉设计）。视觉走查请看 <a href="#preview">Preview 站</a>。</p>
+
 <h3>扩展端 happy path（PC）</h3>
-<pre><code>┌──────────────┐    URL 变化    ┌──────────────┐    匹配规则    ┌──────────────┐
-│ 用户打开漫画站 │──────────────▶│ Content Script │──────────────▶│ 识别作品/章节  │
-└──────────────┘                └──────────────┘                └──────┬───────┘
-                                                                       │
-                                                                       ▼
-                                                                ┌──────────────┐
-                                                                │ 注入 Sync Bar │
-                                                                │  (Shadow DOM) │
-                                                                └──────┬───────┘
-                                                                       │
-                            ┌────────── 用户点 [+ 加入书架] ─────────┤
-                            │                                          │
-                            ▼                                          ▼
-                    ┌──────────────┐                           ┌──────────────┐
-                    │  Background   │◀── chrome.runtime.msg ──│ 用户翻页      │
-                    │ Service Worker│                           └──────────────┘
-                    └──────┬───────┘
-                           │ 写入
-                           ▼
-                    ┌──────────────┐
-                    │  IndexedDB    │
-                    │ (via Dexie)   │
-                    └──────────────┘</code></pre>
-
-<h3>移动端 happy path（Android）</h3>
-<pre><code>┌────────────┐  ┌────────────┐  ┌─────────────┐  ┌──────────────────┐
-│ 打开 App   │─▶│ 显示书架    │─▶│ 点作品卡片  │─▶│ 详情页 + 章节列表 │
-└────────────┘  └────────────┘  └─────────────┘  └────────┬─────────┘
-                       ▲                                   │
-                       │ 进度 hydrate                       │ 点「继续阅读」
-                       │                                   │
-                       │                                   ▼
-                ┌──────┴──────┐                  ┌─────────────────┐
-                │  SQLite     │◀── 写入 ────────│ WebView 加载源站 │
-                │ (Capacitor) │                  │ + 注入追踪脚本   │
-                └─────────────┘                  └─────────────────┘
-                       ▲                                   │
-                       └────── 翻页/章节跳转上报 ─────────┘</code></pre>
-
-<h3>换源决策</h3>
-<pre><code>用户点「继续阅读」
+<pre><code>[User opens manga page]
+        │
+        ▼  (URL change event)
+[Content Script]
+        │
+        ▼  (match against SourceRule)
+[Detection: title + chapter]
         │
         ▼
-   当前源可用？
-   ┌─── yes ───────────────▶ 直接打开当前源章节页
-   │
-   └─── no  ──┬──────────▶  其他可用源？
-              │            │
-              │            ├─ yes ─▶ 列出可选源 → 用户选择 → 打开
-              │            │
-              │            └─ no ──▶ 提示「暂无可用源」+ 引导导入新规则</code></pre>
+[Inject Sync Bar into page]
+        │
+        ├──── User taps [Add to Shelf] ───┐
+        │                                  │
+        ▼                                  ▼
+[User scrolls / changes chapter]   [Send msg → Background]
+        │                                  │
+        ▼  (track event)                   ▼
+[Send msg → Background]            [Background writes to local store]
+        │                                  │
+        ▼                                  ▼
+[Background updates progress]      [Sync Bar UI: "in shelf"]</code></pre>
+
+<h3>移动端 happy path（Android）</h3>
+<pre><code>[Open App]
+    │
+    ▼
+[Hydrate state from local store]
+    │
+    ▼
+[Bookshelf page renders]
+    │
+    ▼  (User taps a manga card)
+[Detail page]
+    │
+    ├─→ [Display chapter list]
+    │
+    ▼  (User taps "Continue reading")
+[WebView opens source site chapter URL]
+    │
+    ├─→ [Inject tracking script]
+    │
+    ▼  (User scrolls / taps next chapter)
+[Tracking script reports progress]
+    │
+    ▼
+[Bridge → write to local store]</code></pre>
+
+<h3>换源决策</h3>
+<pre><code>[User taps "Continue reading"]
+        │
+        ▼
+   Current source reachable?
+        │
+        ├── YES ────→ [Open chapter URL on current source]
+        │
+        └── NO  ────→ Other sources available for this manga?
+                          │
+                          ├── YES ────→ [Show source picker]
+                          │                 │
+                          │                 ▼
+                          │            [User picks source]
+                          │                 │
+                          │                 ▼
+                          │            [Open chapter on chosen source]
+                          │
+                          └── NO  ────→ [Empty state: "No source available"]
+                                            │
+                                            ▼
+                                       [Suggest: import new rule]</code></pre>
 
 <h2 id="architecture">架构设计</h2>
 
-<h3>顶层分层</h3>
-<pre><code>┌──────────────────────────────────────────────────────────────────────┐
-│                          Application Tier                            │
-│  ┌────────────────────────┐         ┌────────────────────────────┐  │
-│  │  apps/extension (MV3)   │         │  apps/mobile (Capacitor)    │  │
-│  │  ┌──────┬──────┬──────┐ │         │  ┌────────────────────────┐ │  │
-│  │  │popup │option│contnt│ │         │  │ pages / reader-shell   │ │  │
-│  │  └──────┴──────┴──────┘ │         │  └────────────────────────┘ │  │
-│  │  background SW          │         │  Capacitor plugins          │  │
-│  └────────────────────────┘         └────────────────────────────┘  │
-│             │   ▲                              │   ▲                │
-│             │   │ 单向依赖                     │   │                │
-└─────────────┼───┼──────────────────────────────┼───┼────────────────┘
-              ▼   │                              ▼   │
-┌──────────────────────────────────────────────────────────────────────┐
-│                        Domain Packages                               │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐     │
-│  │ @manga/types     │  │ @manga/source-  │  │ @manga/injector  │     │
-│  │ (Zod + TS types) │  │ rules           │  │ (detect+track+  │     │
-│  └─────────────────┘  │ (schema+loader)  │  │  Sync Bar)      │     │
-│         ▲             └─────────────────┘  └─────────────────┘     │
-│         │ 所有 packages 可依赖                          ▲           │
-│         │                                               │           │
-│         │            ┌─────────────────────┐           │           │
-│         └────────────┤ @manga/storage-     ├───────────┘           │
-│                      │ adapter (idb+sqlite) │                       │
-│                      └─────────────────────┘                        │
-└──────────────────────────────────────────────────────────────────────┘
-              ▲
-              │ 实现
-              │
-┌──────────────────────────────────────────────────────────────────────┐
-│                       Persistence Tier (本地)                        │
-│   ┌────────────────────┐              ┌──────────────────────────┐   │
-│   │  IndexedDB (扩展)   │              │  SQLite (Capacitor)       │   │
-│   └────────────────────┘              └──────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────┘</code></pre>
+<h3>顶层分层（结构关系）</h3>
+<pre><code>Application Tier
+├── apps/extension       (Plasmo · popup / options / background / content scripts)
+├── apps/mobile          (Capacitor · pages / reader-shell)
+└── apps/preview         (Vite · 仅消费 ui-kit，验证视觉与交互)
+        │
+        │  imports
+        ▼
+Domain Packages
+├── @manga/ui-kit         (React 组件 · Inkmono token · 三端共用)
+├── @manga/types          (Zod + TS types · 唯一来源)
+├── @manga/source-rules   (schema · loader · adapter[legado/v1/mihon-port])
+├── @manga/injector       (detect + track + Sync Bar 挂载逻辑 · 平台无关)
+└── @manga/storage-adapter (BookshelfStore / ProgressStore 接口 · 双实现)
+        │
+        │  implements
+        ▼
+Persistence Tier (本地)
+├── IndexedDB (Dexie)     ← apps/extension 端
+└── SQLite (Capacitor)    ← apps/mobile 端
+
+依赖方向：apps/* → packages/*。反向禁止。</code></pre>
 
 <h3>关键架构原则</h3>
 <ol>
@@ -531,25 +536,16 @@ export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
 <h2 id="data-flow">数据流</h2>
 
 <h3>三层数据模型</h3>
-<pre><code>┌────────────────────────┐
-│   React 组件 (UI)       │
-└───────────┬────────────┘
-            │ read / write actions
-            ▼
-┌────────────────────────┐
-│  Zustand store          │  ← 内存状态
-│  (bookshelf/source/set) │
-└───────────┬────────────┘
-            │ persist on every write action
-            ▼
-┌────────────────────────┐
-│ @manga/storage-adapter  │  ← 平台无关接口
-└───────────┬────────────┘
-            │
-            ▼
-┌────────────────────────┐
-│ IndexedDB / SQLite      │  ← 本地物理存储
-└────────────────────────┘</code></pre>
+<pre><code>UI Component (React)
+        │  read / write action
+        ▼
+Zustand Store (in-memory)
+        │  persist on every write
+        ▼
+@manga/storage-adapter (interface)
+        │
+        ▼
+IndexedDB / SQLite (physical)</code></pre>
 
 <h3>Store 划分</h3>
 <table>
@@ -562,19 +558,13 @@ export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
 </table>
 
 <h3>跨入口通信（扩展端）</h3>
-<pre><code>┌─────────┐   chrome.runtime.sendMessage   ┌──────────────┐
-│ Popup    │ ────────────────────────────▶ │ Background   │
-└─────────┘                                 │ Service      │
-                                            │ Worker       │
-┌─────────┐   chrome.runtime.sendMessage   │              │
-│ Content  │ ────────────────────────────▶ │ (唯一可写存储 │
-│ Script   │ ◀──────────────────────────── │  的角色)     │
-└─────────┘     status update broadcast    └──────┬───────┘
-                                                   │
-                                                   ▼
-                                            ┌──────────────┐
-                                            │  IndexedDB    │
-                                            └──────────────┘</code></pre>
+<pre><code>Popup ──── chrome.runtime.sendMessage ────→ Background SW
+                                              (唯一可写存储的角色)
+                                                    │
+Content Script ──── sendMessage ────────────→     │
+                ←── status broadcast ──────────    │
+                                                    ▼
+                                              IndexedDB</code></pre>
 <p>消息格式集中在 <code>apps/extension/src/lib/messages.ts</code>，用 discriminated union 类型化。</p>
 
 <h2 id="source-rules">源规则 Schema</h2>
@@ -673,157 +663,124 @@ export function createSyncBar(host: SyncBarHost): SyncBarInstance;</code></pre>
   </tbody>
 </table>
 
-<h3>Sync Bar 形态对比（折叠态 → 展开态）</h3>
-<pre><code>A · Tooling Mono
- 折叠 [ ● ]  →  展开 [ 📕 一拳超人 · ch.182  [+ 加入]              ]
-              方块圆角 36px 高，文字+图标，单色 accent
-
-B · Inkmono
- 折叠 [░▓▓▓░] →  展开 [▓ [封面] 一拳超人 · ch.182      [+ 金黄 CTA] ]
-              墨章感圆形，44px 高，5% opacity 颗粒覆盖
-
-C · Hanji Reading
- 折叠 [ 🔖  ] →  展开 [一拳超人 · 第 182 话         [加入]         ]
-              书签气质 32px 圆形无颗粒，宋体粗体标题</code></pre>
-
 <div class="callout">
-  <strong>v1 默认选定 A · Tooling Mono</strong> —— 单人维护成本最低、信息密度最高、Sync Bar 注入第三方站兼容性最好。Preview 站用 A 实现；B/C 仅以 ASCII 对比保留，未来如果重新做品牌升级时再启用。
+  <strong>v1 默认选定 B · Inkmono</strong> —— 暗色为主调 + 漫画印刷质感（颗粒/墨痕），识别度强、暗色长读舒适、社交分享性最高。Preview 站用 Inkmono 的真实 React 组件实现（来自 <code>@manga/ui-kit</code>），不是手写 HTML mockup。
 </div>
 
-<h2 id="wireframes">UI 详细线框（Candidate A · 默认）</h2>
+<h2 id="wireframes">交互原型（结构 / 状态 / 动作，不含视觉）</h2>
 
-<h3>Sync Bar — 注入到漫画站页面（Shadow DOM 隔离）</h3>
-<pre><code>┌──────────────────────────── 模拟漫画站背景（深色） ──────────────────────────┐
-│                                                                              │
-│   ┌──┐  作品标题 ────────────                                                │
-│   │📕│  作者 / 章节 ──────                            ┌─ Sync Bar 折叠态 ─┐  │
-│   │  │  正文/章节列表 ──                              │       ●           │  │
-│   └──┘  ────────────                                 │   32×32 圆角矩形  │  │
-│                                                       └───────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────────┘
+<p style="color:var(--text-mute);font-size:13px;font-style:italic;">下面的 ASCII 仅描述屏幕区块、动作和状态流转，不规定具体视觉（颜色、字体、间距、形状）。视觉走查请去 <a href="#preview">Preview 站</a> 看真实组件渲染。</p>
 
-折叠态：32×32 圆角矩形，仅一个 8px 圆点状态指示
-   ● = 已识别且在书架；○ = 已识别未在书架；△ = 识别失败
+<h3>Sync Bar — 状态机</h3>
+<pre><code>states: [folded, expanded-detected, expanded-in-shelf, expanded-error]
 
-展开态（未在书架）：高 36px、单行
-┌──────────────────────────────────────────────────────────┐
-│ [📕]  一拳超人 · ch.182                    [+ 加入书架]  │   ← 单色 accent CTA
-└──────────────────────────────────────────────────────────┘
+  [folded] (status dot only)
+      |
+      | tap
+      v
+  [expanded-detected]
+      | - cover
+      | - title + chapter
+      | - [Add to Shelf] CTA
+      |
+      | tap [Add]
+      v
+  [expanded-in-shelf]                 chapter changes
+      | - [Done] state            ----------------------&gt;
+      |                                                   |
+      |                                                   v
+      |                                  [expanded-in-shelf + Toast]
+      |                                  - [Done] state
+      |                                  - [Toast: "Updated"] (auto-dismiss 2s)
+      v
 
-展开态（已在书架，章节翻页时）：
-┌──────────────────────────────────────────────────────────┐
-│ [📕]  海贼王 · ch.1108           [✓ 在书架]  [已记录]    │   ← toast 2s 淡出
-└──────────────────────────────────────────────────────────┘</code></pre>
+  [expanded-error]   &lt;-- when SourceRule mismatch / parse fail
+      - [Detection failed]
+      - [Report] action</code></pre>
 
-<h3>Popup — 360 × 500 工具栏弹出</h3>
-<pre><code>┌─ Popup 360×500 ──────────────────────────────────┐
-│┌────┬─────────────────────────────────────────┐│
-││ 📕 │ ┌─────────────────────────────────────┐ ││  ← Search bar
-││────│ │ 搜索 12 部作品…                     │ ││     sticky top
-││ 📚 │ └─────────────────────────────────────┘ ││
-││────│                                          ││
-││ ⏱  │ ┌──┐ 一拳超人              ch.182/182  ││
-││    │ │ 一│ 今天 · example-1               +1 ││  ← 列表行：紧凑
-││    │ └──┘                                    ││     单行省略
-││    │                                          ││
-││    │ ┌──┐ 海贼王                ch.1108/1110 ││
-││    │ │ 海│ 今天 · example-2               +2 ││
-││    │ └──┘                                    ││
-││    │                                          ││
-││    │ ┌──┐ 火影忍者（完结）       ch.700/700  ││
-││    │ │ 火│ 上月 · example-1                  ││
-││    │ └──┘                                    ││
-││    │                                          ││
-││    │ ┌──┐ 咒术回战              ch.251/255  ││
-││    │ │ 咒│ 昨天 · example-2               +4 ││
-││    │ └──┘                                    ││
-││    │     ▼ ... 更多 ...                       ││
-││    │                                          ││
-││────│ ┌─────────────────────────────────────┐ ││
-││ ⓘ  │ │ 12 部 · 4 个源        本地 · v0.1   │ ││  ← Footer 元数据
-││    │ └─────────────────────────────────────┘ ││
-│└────┴─────────────────────────────────────────┘│
-│ 40px rail | 320px 主内容                        │
-└──────────────────────────────────────────────────┘
+<h3>Popup — 区块结构（不含视觉）</h3>
+<pre><code>+--------+-----------------------------------+
+| left   | top: search input (sticky)        |
+| rail   |-----------------------------------|
+| (tabs) | main: list / state-view           |
+|        |   - normal  -&gt; list of items      |
+|  [Cur] |   - empty   -&gt; CTA "install ext"  |
+|  [She] |   - loading -&gt; skeleton rows      |
+|  [Rec] |   - error   -&gt; message + [Retry]  |
+|  ...   |-----------------------------------|
+|  [Set] | foot: count meta . version        |
++--------+-----------------------------------+
 
-Tab 切换：左侧 rail（当前页 / 书架 / 最近 / ...spacer / 设置）
-状态分支：normal / empty / loading / error 都在主内容区切换，rail 不变</code></pre>
+tabs: Current page / Shelf / Recent / Settings
+list row anatomy: cover | title | sub(progress + when) | source-pill | unread-badge?</code></pre>
 
-<h3>Options 全屏页 — 书架管理 + 源订阅</h3>
-<pre><code>┌─ Options 全屏 ───────────────────────────────────────────────────────┐
-│  书架管理              12 部 · 4 个源                                 │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │ 📕 example-1（虚构源）                              4 部       │  │
-│  ├────────────────────────────────────────────────────────────────┤  │
-│  │ [一] 一拳超人          ch.182/182 · 今天      [✎] [×]          │  │
-│  │ [火] 火影忍者（完结）  ch.700/700 · 上月      [✎] [×]          │  │
-│  │ [进] 进击的巨人（完结）ch.139/139 · 上月      [✎] [×]          │  │
-│  │ [B ] BLEACH 死神       ch.686/686 · 去年      [✎] [×]          │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │ 📕 example-2（虚构源）                              3 部       │  │
-│  ├────────────────────────────────────────────────────────────────┤  │
-│  │ [海] 海贼王            ch.1108/1110 · 今天     [✎] [×]         │  │
-│  │ [咒] 咒术回战          ch.251/255 · 昨天       [✎] [×]         │  │
-│  │ [我] 我的英雄学院      ch.408/415 · 上周       [✎] [×]         │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-│                                                                        │
-│  源规则订阅                                                            │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │ [legado-v3]   https://example.com/legado-pack-cn.json   [●ON]  │  │  ← 重点入口：
-│  │               182 sites                                          │  │     legado import
-│  │ [v1-native]   本地 · my-rules.json                       [●ON]  │  │
-│  │               3 sites                                            │  │
-│  │ [mihon-port]  https://example.com/mihon-pack.json        [○OFF] │  │
-│  │               96 sites                                           │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-│  [+ 添加订阅]  [导入 JSON 文件]                                        │
-└────────────────────────────────────────────────────────────────────────┘</code></pre>
+<h3>Options — 区块结构（不含视觉）</h3>
+<pre><code>section: Bookshelf Management
+  +-- group (per source)
+  |     +-- header: source-id . count
+  |     +-- rows: cover | title | sub | [edit] [remove]
+  +-- ...
 
-<h3>Mobile — 四屏并排</h3>
-<pre><code>┌─ 书架（首页）──┐ ┌─ 详情页 ──────┐ ┌─ Reader Shell ┐ ┌─ 设置 ────────┐
-│■■■        9:41│ │■■■        9:41│ │◀ 第 182 话    │ │■■■        9:41│
-│════════════════│ │════════════════│ │       example-1│ │════════════════│
-│ 书架    ◇ 列表 │ │◀ 一拳超人  ⇄换源│ │                │ │◀ 设置          │
-│────────────────│ │────────────────│ │  ┌──────────┐ │ │────────────────│
-│┌──┐一拳超人 +1 │ │┌──────┐一拳超人│ │  │          │ │ │ 源规则         │
-││一│ ch.182/182│ ││📕    │ ONE/   │ │  │ [WebView │ │ │ ─ 订阅源    管理│
-││  │ ex-1·今天 │ ││      │ 村田雄介│ │  │  内容]   │ │ │ ─ 导入legado导入│
-│└──┘            │ │└──────┘[ex-1] │ │  │          │ │ │                │
-│┌──┐海贼王   +2 │ │完全无敌的英雄琦│ │  └──────────┘ │ │ 数据           │
-││海│ ch.1108   │ │玉为了寻找强敌而│ │                │ │ ─ 导出书架  导出│
-││  │ ex-2·今天 │ │四处奔波……      │ │                │ │ ─ 导入书架  导入│
-│└──┘            │ │────────────────│ │                │ │                │
-│┌──┐火影忍者(完)│ │章节 · 共 182 话│ │                │ │ 阅读器         │
-││火│ ch.700/700│ │▶第 182 话  在读│ │                │ │ ─ 广告屏蔽  ●ON│
-││  │ ex-1·上月 │ │ 第 181 话  已读│ │                │ │ ─ 移动 CSS  ●ON│
-│└──┘            │ │ 第 180 话  已读│ │                │ │                │
-│┌──┐咒术回战 +4 │ │ ...            │ │ ◀ 上 182/182 下│ │ 关于           │
-││咒│ ch.251/255│ │┌──────────────┐│ │             ▶  │ │ ─ 版本 v0.1.0  │
-││  │ ex-2·昨天 │ ││ ▶ 继续阅读   ││ │                │ │                │
-│└──┘            │ │└──────────────┘│ │                │ │                │
-│  ▼ ... 12 部   │ │                │ │                │ │                │
-│════════════════│ │                │ │                │ │                │
-│📚书架🔍发现👤我│ │                │ │                │ │                │
-└────────────────┘ └────────────────┘ └────────────────┘ └────────────────┘</code></pre>
+section: Source Subscriptions
+  +-- row: [format-pill] | url | site-count | toggle
+  +-- row: [format-pill] | url | site-count | toggle
+  +-- ...
+  +-- actions: [+ Add subscription] [Import JSON file]
 
-<h2 id="preview">Preview 站</h2>
+formats supported: legado-v3 | manga-tracker-v1 | mihon-port</code></pre>
 
-<p>独立的静态预览页，用 Tooling Mono 默认风格实现，覆盖所有 4 类宿主（Sync Bar / Popup / Options / Mobile 四屏），带状态切换控件（normal / empty / loading / error），用于 v1 编码前的 UI 走查。</p>
+<h3>Mobile — 屏幕导航图（不含视觉）</h3>
+<pre><code>tabbar (always at bottom): [Shelf] | [Discover] | [Me]
+
+[Shelf]
+  +- header: title . view-toggle
+  +- content: list of rows
+  |    row anatomy: cover | (title + unread-badge?) | progress | (source + when)
+  +- tap row -&gt; [Detail]
+
+[Detail]
+  +- header: back . title . [change-source]
+  +- hero: cover | (title + author + source-pill)
+  +- summary
+  +- chapter-list (current chapter highlighted)
+  +- floating CTA: [Continue reading] -&gt; [Reader]
+
+[Reader]  (WebView shell, no native rendering)
+  +- topbar (semi-transparent overlay): back . chapter title . source-id
+  +- webview frame: source-site chapter content + injected tracking script
+  +- botbar: [prev] . progress . [next]
+
+[Settings]  (reachable from "Me" tab)
+  +- section: Source Rules -&gt; [Manage subscriptions] [Import legado]
+  +- section: Data         -&gt; [Export shelf] [Import shelf]
+  +- section: Reader       -&gt; [Ad block] [Mobile CSS] toggles
+  +- section: About        -&gt; version</code></pre>
+
+
+<h2 id="preview">Preview 站（真实组件）</h2>
+
+<p>用 <code>@manga/ui-kit</code> 中的<strong>真实 React 组件</strong>渲染所有 4 类宿主（Sync Bar / Popup / Options / 移动端 4 屏）。这些组件以后会被 <code>apps/extension</code>（Plasmo）和 <code>apps/mobile</code>（Capacitor）直接 import，preview / extension / mobile 三端共享同一份组件实现，永不漂移。</p>
 
 <table>
   <thead><tr><th>项</th><th>说明</th></tr></thead>
   <tbody>
-    <tr><td>路径</td><td><code>site/preview/index.html</code>（与设计文档同仓库，CF Pages 自动一并部署）</td></tr>
-    <tr><td>访问</td><td>部署后：<code>https://manga-tracker.pages.dev/preview/</code><br>本地：<code>cd site && python3 -m http.server 8000</code> → <code>http://localhost:8000/preview/</code></td></tr>
-    <tr><td>状态切换</td><td>顶部 toolbar 按钮组 + URL query（<code>?state=empty</code>、<code>?state=loading</code>、<code>?state=error</code>）</td></tr>
-    <tr><td>主题</td><td>顶部 Dark / Light 切换，状态保存到 localStorage</td></tr>
-    <tr><td>Mock 数据</td><td>12 部虚构作品（覆盖长 / 短标题、不同进度、完结 / 连载、4 个虚构源、不同更新时间）；7 条最近阅读</td></tr>
+    <tr><td>实现</td><td>Vite + React + 真实 React 组件（不是手写 HTML mockup）</td></tr>
+    <tr><td>源码</td><td><code>apps/preview/</code>（Vite app） + <code>packages/ui-kit/</code>（共享组件）</td></tr>
+    <tr><td>本地运行</td><td><code>pnpm install &amp;&amp; pnpm dev:preview</code> → <code>http://localhost:5174</code></td></tr>
+    <tr><td>构建</td><td><code>pnpm build:site</code> → <code>dist/</code> = 设计文档 + <code>dist/preview/</code> 子路径</td></tr>
+    <tr><td>访问（部署后）</td><td><code>https://manga-tracker.pages.dev/preview/</code></td></tr>
+    <tr><td>状态切换</td><td>顶部 toolbar 按钮组 + URL query (<code>?state=empty|loading|error</code>)</td></tr>
+    <tr><td>主题</td><td>Dark / Light 切换，保存到 localStorage</td></tr>
+    <tr><td>Mock 数据</td><td>来自 <code>@manga/ui-kit/src/mocks/data.ts</code>：12 部虚构作品 + 7 条最近阅读 + 3 个 wire-format 订阅样本</td></tr>
     <tr><td>合规</td><td>所有源标识 <code>example-1 ~ example-4</code>，URL <code>example.com</code> 占位；不指向任何真实漫画站</td></tr>
   </tbody>
 </table>
 
 <div class="callout">
+  <strong>preview 与生产组件零漂移</strong>：preview 不写自己的视觉实现。如果一个组件在 preview 里看起来对，那它在 extension / mobile 里也对——因为是同一份 React 代码。
+</div>
+
+<div class="callout warn">
   Preview 站只覆盖 UI 走查，<strong>不替代真实环境验证</strong>：扩展真实注入、WebView 真实抓取、源规则真实匹配仍需在真实漫画站测试（这部分 mock 不出价值）。
 </div>
 
@@ -838,7 +795,8 @@ Tab 切换：左侧 rail（当前页 / 书架 / 最近 / ...spacer / 设置）
     <tr><td>测试</td><td>Vitest</td><td>统一 packages + apps，配置最简</td></tr>
     <tr><td>扩展框架</td><td><strong>Plasmo 0.89+</strong></td><td>多浏览器（Chrome/Edge/Firefox/Safari），CSUI 内建支持 Sync Bar 注入；CRXJS 在跨浏览器场景下要自己拼 manifest</td></tr>
     <tr><td>移动端容器</td><td>Capacitor 6.x</td><td>React 代码与扩展共享率最高（vs RN/Flutter）</td></tr>
-    <tr><td>UI 库</td><td>React 18 + Tailwind v4</td><td>v4 用 Lightning CSS，扩展场景体积小</td></tr>
+    <tr><td>UI 共享层</td><td><strong>@manga/ui-kit</strong>（React 18 + plain CSS tokens）</td><td>Inkmono 视觉语言（Candidate B）；preview / extension / mobile 三端共享同一份组件，零漂移</td></tr>
+    <tr><td>Preview 应用</td><td>Vite 5 + React 18</td><td>消费 ui-kit，提供状态切换和走查面，部署到 <code>/preview</code> 子路径</td></tr>
     <tr><td>状态</td><td>Zustand</td><td>轻量，跨端 store 代码可部分共享</td></tr>
     <tr><td>Schema</td><td>Zod</td><td>边界校验（用户导入数据 / 源规则）</td></tr>
     <tr><td>本地存储（扩展）</td><td>Dexie.js (IndexedDB)</td><td>避免裸 IDB API</td></tr>
@@ -918,9 +876,10 @@ git push -u origin main</code></pre>
   <li>构建配置：
     <ul>
       <li>Framework preset: <code>None</code></li>
-      <li>Build command: <em>留空</em>（纯静态 HTML，无需构建）</li>
-      <li>Build output directory: <code>site</code></li>
+      <li>Build command: <code>pnpm install --frozen-lockfile=false && pnpm build:site</code></li>
+      <li>Build output directory: <code>dist</code></li>
       <li>Root directory: <code>/</code></li>
+      <li>Environment variables: <code>NODE_VERSION=20</code></li>
     </ul>
   </li>
   <li>点 Deploy。Pages 会给你一个 <code>manga-tracker.pages.dev</code> 域名，每次 push 到 main 自动部署</li>
@@ -933,13 +892,20 @@ git push -u origin main</code></pre>
 <p>Pages 默认会为每个 PR 自动起一个 preview 部署，URL 形如 <code>&lt;commit-sha&gt;.manga-tracker.pages.dev</code>。一个人开发时这个特性也很有用：可以在合并前先看新版长什么样。</p>
 
 <h3>本地预览</h3>
-<pre><code># 用任何静态服务器都行，例如：
-cd site
-python3 -m http.server 8000
+<pre><code># 安装依赖（首次）
+pnpm install
+
+# 设计文档（静态 HTML）
+cd site && python3 -m http.server 8000
 # → http://localhost:8000
 
-# 或者用 wrangler 模拟 Pages 环境：
-npx wrangler pages dev site</code></pre>
+# Preview 站（Vite dev server）
+pnpm dev:preview
+# → http://localhost:5174
+
+# 完整构建（CF Pages 一致）
+pnpm build:site
+# → 输出在 dist/ 下，dist/index.html 是设计文档，dist/preview/ 是 preview 应用</code></pre>
 
 <h2 id="decisions">开放决策</h2>
 
@@ -955,8 +921,8 @@ npx wrangler pages dev site</code></pre>
     <tr><td>D5</td><td>同 WiFi 局域网双端同步</td><td>v1 不做</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D6</td><td>首批源规则来源（已修订）</td><td><strong>import legado 漫画书源</strong>，自己写仅作兜底</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D7</td><td>扩展打包工具</td><td><strong>Plasmo</strong>（多浏览器，CSUI 内建）</td><td><span class="pill good">已确认</span></td></tr>
-    <tr><td>D8</td><td>UI 设计候选选定（A / B / C）</td><td><strong>A · Tooling Mono</strong>（v1 默认）</td><td><span class="pill good">已确认</span></td></tr>
-    <tr><td>D9</td><td>Preview 站</td><td><strong>Required</strong>，已落地 <code>site/preview/</code></td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D8</td><td>UI 设计候选选定（A / B / C）</td><td><strong>B · Inkmono</strong>（v1 默认）</td><td><span class="pill good">已确认</span></td></tr>
+    <tr><td>D9</td><td>Preview 形态</td><td><strong>真实 React 组件</strong>（Vite + @manga/ui-kit），不是手写 HTML mockup</td><td><span class="pill good">已确认</span></td></tr>
     <tr><td>D10</td><td>设计文档站自定义域名</td><td>暂用 *.pages.dev</td><td><span class="pill warn">待定</span></td></tr>
   </tbody>
 </table>

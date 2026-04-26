@@ -164,7 +164,7 @@ V1 默认行为：**用户从 legado 社区导入已有的漫画书源 URL** →
   - 移动端 app 在 Capacitor 内 vs 浏览器内的视觉差异（safe-area、滚动行为）需要分别走查
   - **多状态 mock**（空 / loading / error / 不同规模书架）在真实环境里很难凑齐
   - 项目还涉及"扩展端 + 移动端 + Options 页"三类宿主，独立 preview 站可以一屏看齐对比
-- **Surface**：单文件 HTML 静态预览站，部署在 Cloudflare Pages 的 `/preview` 子路径下（与设计文档同仓库）
+- **Surface**：`apps/preview/` —— **真正的 Vite + React 应用**，消费 `packages/ui-kit/` 中的真实 React 组件（与扩展、移动端 app 共用同一份组件）。构建产物部署在 Cloudflare Pages 的 `/preview` 子路径下
 - **Functional coverage**：
   - Sync Bar 在"模拟漫画站"背景下的折叠 / 展开 / 已在书架 / 进度更新 toast 四态
   - Popup 360×500 三 Tab（当前 / 书架 / 最近）
@@ -183,7 +183,7 @@ V1 默认行为：**用户从 legado 社区导入已有的漫画书源 URL** →
   2. **第二阶段**：扩展 unpacked load → 在目标漫画站测试识别和追踪（真实环境）
   3. **第三阶段**：构建 debug APK → 装自己手机 → 跑完整流程（真实环境）
 
-> 选定 UI 候选 **A · Tooling Mono** 作为 v1 默认（单人维护成本最低、信息密度最高）。Preview 站用 A 风格实现；B / C 仅在设计文档里以 ASCII 对比保留，不做完整 preview。
+> 选定 UI 候选 **B · Inkmono** 作为 v1 默认（暗色为主调 + 漫画印刷质感，识别度强、暗色长读舒适、社交分享性最高）。视觉语言已落地到 `packages/ui-kit/src/tokens/inkmono.css`。A / C 仅在设计文档里以候选保留，未来如果重新做品牌升级时再启用。
 
 ## Open Decisions
 

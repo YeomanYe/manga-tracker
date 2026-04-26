@@ -1,0 +1,23 @@
+{
+  "name": "manga-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "中文漫画追踪 + 换源工具",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev:preview": "pnpm --filter @manga/preview dev",
+    "build:preview": "pnpm --filter @manga/preview build",
+    "build:site": "pnpm build:preview && node scripts/build-dist.mjs",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "test": "echo \"(no tests yet)\""
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "typescript": "5.6.3"
+  }
+}

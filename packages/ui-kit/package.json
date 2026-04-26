@@ -1,0 +1,16 @@
+{
+  "name": "@manga/ui-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared React components for extension / mobile / preview. Inkmono visual language (Candidate B).",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./tokens.css": "./src/tokens/inkmono.css"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  }
+}

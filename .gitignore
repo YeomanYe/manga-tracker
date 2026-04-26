@@ -8,6 +8,8 @@ build/
 out/
 .turbo/
 *.tsbuildinfo
+apps/*/dist/
+packages/*/dist/
 
 # Environment
 .env

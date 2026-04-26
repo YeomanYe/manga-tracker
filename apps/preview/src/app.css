@@ -1,0 +1,220 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  font-family: var(--ink-font-sans);
+  min-height: 100vh;
+}
+
+body {
+  background-image: radial-gradient(at 20% 0%, rgba(194, 65, 12, 0.05) 0%, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(234, 179, 8, 0.04) 0%, transparent 60%);
+}
+
+a {
+  color: var(--ink-accent);
+}
+
+.app-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(15, 20, 25, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--ink-border);
+  padding: 12px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+}
+
+[data-theme="light"] .app-toolbar {
+  background: rgba(245, 241, 234, 0.85);
+}
+
+.app-toolbar .brand {
+  font-family: var(--ink-font-serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 16px;
+}
+.app-toolbar .brand .dot {
+  color: var(--ink-main);
+}
+.app-toolbar .tag {
+  color: var(--ink-text-mute);
+  font-size: 12px;
+  font-family: var(--ink-font-mono);
+}
+.app-toolbar .spacer {
+  flex: 1;
+}
+.app-toolbar a {
+  color: var(--ink-text-soft);
+  text-decoration: none;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--ink-border);
+  border-radius: 5px;
+  background: var(--ink-bg-soft);
+}
+.app-toolbar a:hover {
+  color: var(--ink-main);
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--ink-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--ink-bg-soft);
+}
+.seg button {
+  background: transparent;
+  border: none;
+  color: var(--ink-text-soft);
+  padding: 5px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--ink-font-mono);
+  border-right: 1px solid var(--ink-border);
+}
+.seg button:last-child {
+  border-right: none;
+}
+.seg button.cur {
+  background: var(--ink-main-soft);
+  color: var(--ink-main);
+  font-weight: 600;
+}
+.seg button:hover:not(.cur) {
+  color: var(--ink-text);
+}
+
+.app-section {
+  max-width: 1320px;
+  margin: 56px auto 32px;
+  padding: 0 24px;
+}
+.app-section h2 {
+  font-family: var(--ink-font-serif);
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+.app-section h2 small {
+  color: var(--ink-text-mute);
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 10px;
+  font-family: var(--ink-font-mono);
+}
+.app-section .desc {
+  color: var(--ink-text-soft);
+  font-size: 13px;
+  margin: 0 0 22px;
+  max-width: 760px;
+}
+.app-row {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.app-label {
+  font-family: var(--ink-font-mono);
+  font-size: 11px;
+  color: var(--ink-text-mute);
+  margin-bottom: 8px;
+  display: block;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Fake manga site background for SyncBar demo */
+.fakesite {
+  background: linear-gradient(180deg, var(--ink-bg-elev) 0%, var(--ink-bg) 100%);
+  border: 1px solid var(--ink-border);
+  border-radius: 8px;
+  width: 100%;
+  height: 360px;
+  position: relative;
+  overflow: hidden;
+}
+.fakesite::before {
+  content: "[ 模拟漫画站页面背景 ]";
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  font-family: var(--ink-font-mono);
+  font-size: 11px;
+  color: var(--ink-text-faint);
+}
+.fakesite .fake-content {
+  position: absolute;
+  top: 50px;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  opacity: 0.4;
+}
+.fake-cover {
+  background: linear-gradient(135deg, var(--ink-main-soft) 0%, var(--ink-bg-mute) 100%);
+  border-radius: 4px;
+  height: 170px;
+  border: 1px solid var(--ink-border-soft);
+}
+.fake-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fake-text > div {
+  background: var(--ink-bg-mute);
+  height: 12px;
+  border-radius: 2px;
+}
+.fake-text > div:nth-child(1) {
+  width: 60%;
+  height: 18px;
+}
+.fake-text > div:nth-child(2) {
+  width: 90%;
+}
+.fake-text > div:nth-child(3) {
+  width: 40%;
+}
+
+.syncbar-pos {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+.app-footer {
+  max-width: 1320px;
+  margin: 60px auto 40px;
+  padding: 24px 24px 0;
+  color: var(--ink-text-mute);
+  font-size: 12px;
+  border-top: 1px dashed var(--ink-border);
+}
+.app-footer code {
+  font-family: var(--ink-font-mono);
+  background: var(--ink-bg-soft);
+  padding: 1px 5px;
+  border: 1px solid var(--ink-border);
+  border-radius: 3px;
+  font-size: 11px;
+}
+.app-footer a {
+  color: var(--ink-accent);
+  text-decoration: none;
+}

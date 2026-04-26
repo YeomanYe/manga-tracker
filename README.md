@@ -4,10 +4,10 @@
 
 ## 形态
 
-- **浏览器扩展**（PC，Chrome/Firefox MV3）：在中文漫画站浏览时自动识别作品和章节，写入本地书架；通过注入到页面的 Sync Bar 提供主操作入口。
+- **浏览器扩展**（PC，Plasmo 多浏览器：Chrome / Edge / Firefox / Safari）：在中文漫画站浏览时自动识别作品和章节，写入本地书架；通过注入到页面的 Sync Bar 提供主操作入口。
 - **移动端 App**（Android 优先，Capacitor + WebView 套壳）：本地书架 + 点击作品跳转源站继续读 + 跨源切换。
 
-两端共享一份「源站适配规则」（JSON），都属同一 monorepo。
+两端共享一份「源站适配规则」（JSON），且都从 `@manga/ui-kit` 导入同一份 React 组件。
 
 ## 第一阶段范围（6-8 周）
 
@@ -15,69 +15,85 @@
 - 数据全部本地存储（IndexedDB / SQLite），不接云端
 - 适配 3-5 个中文漫画站
 - 不预置任何盗版源 URL，规则全靠用户导入或订阅第三方
+- 视觉语言：**Inkmono · Candidate B**（暗色 + 漫画印刷质感）
 
-第二阶段（不在本期范围）：Web 追踪平台、云端同步、iOS、社交。
+第二阶段（不在本期范围）：Web 追踪平台、云端同步、iOS、社交、Mihon 桥接。
 
 ## 技术栈
 
-- pnpm + Turborepo + TypeScript + Biome
-- **扩展（Plasmo 0.89+）**：跨浏览器 manifest（Chrome / Edge / Firefox / Safari）+ React 18 + Tailwind v4 + Dexie.js
+- pnpm + Turborepo + TypeScript 5 + Biome
+- **扩展（Plasmo 0.89+）**：跨浏览器 manifest + React 18 + Dexie.js
 - **移动端（Capacitor 6 + Android）**：React 18 + Vite + capacitor-community/sqlite
-- **源规则兼容**：legado 漫画书源（V1 主力，复用中文社区资源）+ 自有 v1 格式 + Mihon port（V2）
+- **UI 共享层（@manga/ui-kit）**：React 18 + plain CSS tokens（Inkmono），三端共享，零漂移
+- **Preview 应用（apps/preview/）**：Vite 5 + React 18，import @manga/ui-kit 真实组件
+- **源规则兼容**：legado 漫画书源（V1 主力）+ 自有 v1 格式 + mihon-port（V2）
 - 共享：Zustand、Zod
 
-详见 `docs/01-project-prep.md`。
+详见 [`docs/01-project-prep.md`](./docs/01-project-prep.md)。
 
 ## 目录
 
 ```
 manga-tracker/
 ├── apps/
-│   ├── extension/          # 浏览器扩展 (MV3)
-│   └── mobile/             # Android app (Capacitor)
+│   ├── preview/                # Vite + React 预览站（消费 ui-kit）
+│   ├── extension/              # 浏览器扩展（Plasmo · TBD）
+│   └── mobile/                 # Android app（Capacitor · TBD）
 ├── packages/
-│   ├── source-rules/       # 源站规则 schema + 加载器
-│   ├── injector/           # content script 接口（扩展和 app 共用）
-│   ├── types/              # 领域类型
-│   └── storage-adapter/    # 本地存储抽象层
-├── docs/                   # 工程规范（已落地）
+│   ├── ui-kit/                 # 共享 React 组件 + Inkmono 视觉语言
+│   ├── types/                  # 领域类型 + Zod schema (TBD)
+│   ├── source-rules/           # 源站规则 schema + loader (TBD)
+│   ├── injector/               # content script 抽象 (TBD)
+│   └── storage-adapter/        # 本地存储抽象 (TBD)
+├── docs/                       # 工程规范（已落地）
 │   ├── 01-project-prep.md
 │   ├── architecture/
 │   ├── coding/
 │   ├── ui/
 │   ├── testing/
 │   └── ai-guide/
-└── site/                   # 设计文档站（部署到 Cloudflare Pages）
-    ├── index.html          # 主设计文档
-    ├── preview/
-    │   └── index.html      # UI Preview（Tooling Mono 默认风格）
-    ├── _headers
-    └── wrangler.toml
+├── site/                       # 静态设计文档（部署到 Cloudflare Pages）
+│   ├── index.html
+│   └── _headers
+├── scripts/
+│   └── build-dist.mjs          # 合并 site/ + apps/preview/dist 到 dist/
+├── wrangler.toml               # Cloudflare Pages 配置
+├── package.json                # workspace root
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+└── biome.json
 ```
 
-## 设计文档
+## 开发命令
 
-完整设计文档（流程 / 架构 / 模块 / UI 候选 / ASCII 线框 / 部署）：
+```bash
+pnpm install                # 首次安装
 
-- 本地：`cd site && python3 -m http.server 8000` → http://localhost:8000
-- 在线（部署后）：https://manga-tracker.pages.dev
+pnpm dev:preview            # Preview 站 dev server (http://localhost:5174)
+pnpm build:preview          # 构建 preview 应用
+pnpm build:site             # 构建并合并到 dist/（CF Pages 用）
 
-## Preview 站（UI 走查）
+pnpm check                  # Biome lint + format 检查
+pnpm check:fix              # 自动修复
+```
 
-用 **Tooling Mono**（v1 默认风格）实现的 UI 预览，覆盖 Sync Bar / Popup / Options / 移动端 4 类宿主，带状态切换（normal / empty / loading / error）：
+## 设计文档与 Preview
 
-- 本地：上面命令启动后访问 http://localhost:8000/preview/
-- 在线：https://manga-tracker.pages.dev/preview/
-- URL query：`?state=empty` 等可直接定位到状态
+- **设计文档**：本地 `python3 -m http.server 8000 -d site` → http://localhost:8000；线上 https://manga-tracker.pages.dev
+- **Preview 站**：本地 `pnpm dev:preview` → http://localhost:5174；线上 https://manga-tracker.pages.dev/preview/
+  - 真实 React 组件（来自 `@manga/ui-kit`），不是手写 mockup
+  - 状态切换：URL query `?state=empty|loading|error`
+  - 主题切换：Dark / Light（保存到 localStorage）
 
-## 部署
-
-设计文档站通过 **Cloudflare Pages** 自动部署：
+## 部署（Cloudflare Pages）
 
 1. 推到 GitHub：`git push -u origin main`
 2. Cloudflare Pages 控制台 → Connect to Git → 选 `YeomanYe/manga-tracker`
-3. Build output directory: `site`，其余留空
-4. Push to `main` 自动部署，PR 自动出 preview
+3. 构建配置：
+   - Build command: `pnpm install --frozen-lockfile=false && pnpm build:site`
+   - Build output directory: `dist`
+   - Environment variable: `NODE_VERSION=20`
+4. push 到 `main` 自动部署，PR 自动出 preview
 
 详见 `site/index.html` 的部署章节。
 
