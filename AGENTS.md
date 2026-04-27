@@ -10,11 +10,12 @@
 4. [`docs/ai-guide/rules.md`](./docs/ai-guide/rules.md) — AI 协作详细约定
 5. 任务相关领域文档（按需）
 
-## 三条铁律
+## 四条铁律
 
 1. **代码改动必须经 `flow-dev-task` 编排**（用户已声明，除非明示绕过）
 2. **不向 main 直接 commit**，全部走 PR
 3. **不信任自己的成功声明**：必须跑 `pnpm test && pnpm check` 通过再说"做完了"
+4. **测试失败 = 修实现，不是修测试**：禁止改测试断言来骗绿、禁止删测试来绕过。详见 [`docs/ai-guide/rules.md`](./docs/ai-guide/rules.md) 红线章节。
 
 ## 项目特殊性
 
